@@ -2938,6 +2938,27 @@ function showHRRedirect() {
   document.getElementById('practice-mode').style.display = 'none';
   document.getElementById('loading-view').style.display = 'none';
   document.getElementById('practice-results').style.display = 'block';
+  // ===== HR REDIRECT CHECK =====
+  // Before running alignment analysis, check whether the situation involves
+  // discrimination, harassment, retaliation, or bullying — either named or described.
+  // If so, route the user to HR instead of coaching them through phrasing.
+  const fullForCheck = message + ' ' + (context || '');
+  const keywordTriggered = hasHRKeyword(fullForCheck);
+  let triggerHR = keywordTriggered;
+
+  if (!triggerHR) {
+    // No keyword found — ask Claude whether the situation is described.
+    triggerHR = await isHRSituationDescribed(message, context);
+  }
+
+  if (triggerHR) {
+    document.getElementById('loading-view').style.display = 'none';
+    showHRRedirect();
+    btn.disabled = false;
+    btn.textContent = currentLang === 'es' ? 'Revisar mis palabras' : 'Check my words';
+    return;
+  }
+  // ===== END HR REDIRECT CHECK =====
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 async function checkMyWords() {
