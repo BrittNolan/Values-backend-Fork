@@ -2811,6 +2811,136 @@ function renderPracticeValuesBar() {
   }
 }
 
+// ==================== HR REDIRECT (Practice Mode) ====================
+
+const HR_KEYWORDS_EN = [
+  'discriminat', 'harass', 'retaliat', 'bully',
+  'hostile work', 'racist', 'sexist', 'homophobic', 'transphobic',
+  'sexual advance', 'inappropriate touch', 'unwanted touch',
+  'slur', 'racial slur'
+];
+
+const HR_KEYWORDS_ES = [
+  'discriminaci', 'acoso', 'represalia',
+  'intimidaci', 'ambiente hostil', 'racista', 'sexista', 'homof', 'transf',
+  'avance sexual', 'tocamiento', 'insulto racial'
+];
+
+function hasHRKeyword(text) {
+  const lower = text.toLowerCase();
+  const all = HR_KEYWORDS_EN.concat(HR_KEYWORDS_ES);
+  return all.some(kw => lower.includes(kw));
+}
+
+async function isHRSituationDescribed(message, context) {
+  const fullText = (message + ' ' + (context || '')).slice(0, 2000);
+  const checkPrompt = `You are a careful classifier. Read the following text and determine if it describes ANY of these workplace situations, even if they are not named directly:
+
+1. Discrimination based on race, gender, age, religion, disability, sexual orientation, national origin, etc.
+2. Harassment (sexual, verbal, repeated targeting, unwanted physical contact, slurs)
+3. Retaliation (someone being punished for reporting something, asking questions, or refusing inappropriate requests)
+4. Bullying (repeated targeting, intimidation, exclusion, public humiliation)
+5. A hostile work environment
+
+Examples of described situations (without naming them):
+- "My manager keeps making comments about my accent" -> YES (discrimination)
+- "I keep getting passed over for projects after I reported what happened" -> YES (retaliation)
+- "Every meeting, he talks over only me and the other woman" -> YES (potentially harassment/discrimination)
+- "I'm worried about giving feedback to my supervisor" -> NO (just normal coaching)
+
+Respond with ONLY a JSON object: {"isHRSituation": true} or {"isHRSituation": false}. No other text.
+
+Text to analyze:
+"""
+${fullText}
+"""`;
+
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        situation: fullText,
+        pattern: 'hr-check',
+        sector: '',
+        tone: '',
+        systemPrompt: checkPrompt,
+        practiceMode: true
+      })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    let parsed = data;
+    if (typeof data === 'string' || (data && data.text)) {
+      try {
+        let raw = (data.text || data.content || data).trim().replace(/^```(?:json)?/, '').replace(/```$/,'').trim();
+        parsed = JSON.parse(raw);
+      } catch (e) { return false; }
+    }
+    return parsed && parsed.isHRSituation === true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function showHRRedirect() {
+  const isEs = currentLang === 'es';
+  const card = document.getElementById('practice-results-card');
+
+  const L = isEs ? {
+    eyebrow: 'Importante',
+    title: 'Esto debe ir directamente a Recursos Humanos',
+    body: 'Lo que describió involucra discriminación, acoso, represalias, o intimidación en el trabajo. Para su propia protección y para preservar el proceso adecuado, esta herramienta no es el lugar correcto para trabajar con esta situación.',
+    bodyTwo: 'Por favor contacte a Recursos Humanos directamente. RR.HH. está capacitado y autorizado para investigar y responder a este tipo de situaciones de manera confidencial.',
+    contactLabel: 'Contacto de Recursos Humanos',
+    contactEmail: 'hr@lifemoves.org',
+    why: 'Por que Recursos Humanos y no esta herramienta?',
+    whyBody: 'Estas situaciones requieren documentacion formal, investigacion, y protecciones legales que solo RR.HH. puede proporcionar. Usar una herramienta de practica de comunicacion podria comprometer su capacidad de protegerle a usted o a otros.',
+    backBtn: 'Volver a Modo Practica'
+  } : {
+    eyebrow: 'Important',
+    title: 'This needs to go directly to HR',
+    body: 'What you described involves discrimination, harassment, retaliation, or bullying in the workplace. For your own protection and to preserve proper process, this tool is not the right place to work through this situation.',
+    bodyTwo: 'Please contact Human Resources directly. HR is trained and authorized to investigate and respond to these kinds of situations confidentially.',
+    contactLabel: 'HR Contact',
+    contactEmail: 'hr@lifemoves.org',
+    why: 'Why HR and not this tool?',
+    whyBody: 'These situations require formal documentation, investigation, and legal protections that only HR can provide. Using a communication practice tool could compromise your ability to protect yourself or others.',
+    backBtn: 'Back to Practice Mode'
+  };
+
+  card.innerHTML = `
+    <div style="background:#F5E5E5;border-left:5px solid #7A2424;border-radius:10px;padding:2rem 2.25rem;margin-bottom:1.5rem;">
+      <div style="font-size:11px;font-weight:700;color:#7A2424;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:0.75rem;display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        ${L.eyebrow}
+      </div>
+      <h2 style="font-family:'Playfair Display',serif;color:#7A2424;font-size:1.85rem;font-weight:600;line-height:1.2;margin-bottom:1rem;">${L.title}</h2>
+      <p style="color:#5a1a1a;font-size:1.05rem;line-height:1.6;margin-bottom:1rem;">${L.body}</p>
+      <p style="color:#5a1a1a;font-size:1.05rem;line-height:1.6;">${L.bodyTwo}</p>
+    </div>
+
+    <div style="background:#1B2A4A;color:white;border-radius:10px;padding:1.75rem 2.25rem;margin-bottom:1.5rem;text-align:center;">
+      <div style="font-size:10px;font-weight:600;color:#C9A84C;text-transform:uppercase;letter-spacing:0.22em;margin-bottom:0.65rem;">${L.contactLabel}</div>
+      <a href="mailto:${L.contactEmail}" style="font-family:'Playfair Display',serif;color:#C9A84C;font-size:1.85rem;font-weight:600;text-decoration:none;display:inline-block;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:2px;">${L.contactEmail}</a>
+    </div>
+
+    <div style="background:#FAFAF7;border:1px solid #E4E1D8;border-radius:10px;padding:1.5rem 1.75rem;margin-bottom:2rem;">
+      <div style="font-size:11px;font-weight:600;color:#1B2A4A;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.5rem;">${L.why}</div>
+      <p style="color:#4a4843;font-size:0.95rem;line-height:1.6;">${L.whyBody}</p>
+    </div>
+
+    <div style="text-align:center;">
+      <button onclick="backToPracticeInput()" style="background:transparent;color:#1B2A4A;border:1px solid #1B2A4A;padding:0.75rem 1.5rem;border-radius:6px;cursor:pointer;font-size:0.95rem;font-weight:500;letter-spacing:0.05em;">${L.backBtn}</button>
+    </div>
+  `;
+
+  document.getElementById('practice-mode').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'none';
+  document.getElementById('practice-results').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function checkMyWords() {
   const errEl = document.getElementById('practice-err');
   const btn = document.getElementById('practice-check-btn');
@@ -2842,6 +2972,28 @@ async function checkMyWords() {
   // Hide practice input, show loading
   document.getElementById('practice-mode').style.display = 'none';
   document.getElementById('loading-view').style.display = 'block';
+
+  // ===== HR REDIRECT CHECK =====
+  // Before running alignment analysis, check whether the situation involves
+  // discrimination, harassment, retaliation, or bullying — either named or described.
+  // If so, route the user to HR instead of coaching them through phrasing.
+  const fullForCheck = message + ' ' + (context || '');
+  const keywordTriggered = hasHRKeyword(fullForCheck);
+  let triggerHR = keywordTriggered;
+
+  if (!triggerHR) {
+    // No keyword found — ask Claude whether the situation is described.
+    triggerHR = await isHRSituationDescribed(message, context);
+  }
+
+  if (triggerHR) {
+    document.getElementById('loading-view').style.display = 'none';
+    showHRRedirect();
+    btn.disabled = false;
+    btn.textContent = currentLang === 'es' ? 'Revisar mis palabras' : 'Check my words';
+    return;
+  }
+  // ===== END HR REDIRECT CHECK =====
 
   // Build the message-type label
   const typeLabels = {
