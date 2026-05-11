@@ -1,10 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { ORG_HANDBOOK } from './lifemoves-handbook.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
 
+const HANDBOOK_BLOCK = `
+
+=== ORGANIZATIONAL HANDBOOK (${ORG_HANDBOOK.handbookVersion}) ===
+The following are official ${ORG_HANDBOOK.organization} policies. When a situation directly implicates one of these policies, reference the specific policy section by name in your "behaviorObserved", "staffReality", "correctBehavior", or "recommendedAction.reasoning" fields. Quote the policy language briefly when it strengthens the response. Do NOT force handbook references when they are not relevant — values-based coaching is the primary lens; the handbook is a supporting reference.
+${ORG_HANDBOOK.policies}
+For complex policy questions or formal complaints, the recommendedAction reasoning may direct the leader to contact HR (${ORG_HANDBOOK.hrContact}).
+`
+
 const DEFAULT_SYSTEM_PROMPT = `You are a leadership coach trained in values-based, trauma-informed leadership in a social services organization. Your task is to analyze a staff behavior situation and produce a structured leadership response.
+
 Use the following organizational values and behavior definitions:
 ADAPTABILITY
 Aligned: adjusts approach, remains solution-oriented, stays regulated under stress
@@ -24,7 +34,9 @@ Misaligned: blames others, avoids accountability, cuts corners
 RESPECT
 Aligned: communicates professionally, acknowledges others, follows through
 Misaligned: interrupts, ignores, uses harsh or dismissive tone
+
 Constraints: Be specific not generic. Align with trauma-informed care. Do not shame the staff member. Focus on accountability and growth.
+
 Respond ONLY in this JSON format with no markdown, no preamble, no backticks:
 {
   "behaviorObserved": "string",
@@ -49,17 +61,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Please provide a situation description.' })
   }
   try {
+    const basePrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT
+    const fullPrompt = basePrompt + HANDBOOK_BLOCK
+
     const message = await client.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 8000,
-      system: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+      system: fullPrompt,
       messages: [{ role: 'user', content: `Analyze this situation: ${situation.trim()}` }]
     })
     const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
     const clean = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
 
-    // Save session to Supabase
     const misaligned = (parsed.valuesAnalysis || [])
       .filter(v => v.status === 'Misaligned')
       .map(v => v.value)
