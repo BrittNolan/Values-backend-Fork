@@ -14,10 +14,16 @@ The following are official ${handbook.org_name || 'organizational'} policies.
 CRITICAL SCHEMA ADDITION: In addition to whatever JSON fields are specified elsewhere in this prompt, you MUST also add a top-level field called "handbookReference" to your JSON response. This field is REQUIRED even if no policies apply (return [] in that case).
 
 RULES FOR handbookReference:
-- It MUST be an array (use [] if no policies apply, never null, never an object, never omitted).
-- Each item in the array represents ONE policy that directly applies to the situation.
-- Include up to 3 most relevant policies. If only one applies, return an array with one item.
-- If no policy directly applies, return an empty array: []
+- It MUST be an array (use [] only if you have read every policy and none directly apply).
+- Default to INCLUDING policies. Most workplace situations touch on attendance, leave, accommodations, conduct, or scheduling — all of which are in the handbook below. Err on the side of identifying applicable policies rather than omitting them.
+- For ANY attendance, tardiness, call-in, or absence pattern: include the Attendance/Punctuality/Absenteeism policy.
+- For ANY mention of caregiving, family health, or recurring health issues affecting work: include the FMLA/CFRA policy AND the Reasonable Accommodation policy.
+- For ANY suspected impairment, substance use, or "under the influence" cues: include the Drug and Alcohol Policy.
+- For ANY harassment, discrimination, retaliation, or hostile environment indicators: include the Anti-Discrimination policy and the Complaint Procedure.
+- For ANY repeated behavior, disciplinary scenario, or pattern that warrants documentation: include the Discipline/Performance Improvement policy.
+- For ANY mention of holidays, holiday pay, or time-off requests: include the Holiday Pay or PTO policy.
+- For ANY late or missing call-ins beyond the threshold: include Job Abandonment.
+- Include up to 3 most relevant policies. If more than 3 apply, pick the 3 most central.
 - Do NOT mix handbook language into the other coaching fields. Keep handbook references ONLY in the handbookReference array.
 
 Each policy object in the array MUST have exactly these three fields:
