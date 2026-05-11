@@ -3661,6 +3661,13 @@ CRITICAL: The "handbookReference" array must be populated with 1-3 policy object
 function render(d) {
   document.getElementById('loading-view').style.display = 'none';
   const ac = d.recommendedAction.action.toLowerCase();
+  if (d.handbookReference && !Array.isArray(d.handbookReference) && Array.isArray(d.handbookReference.policies)) {
+    d.handbookReference = d.handbookReference.policies.map(p => ({
+      policyName: p.name || p.policyName || '',
+      policySummary: p.summary || p.policySummary || '',
+      whyRelevant: p.whyRelevant || ''
+    }));
+  }
   const L = currentLang === 'es' ? {
     behaviorObserved: 'Comportamiento observado',
     valuesAnalysis: 'Análisis de valores',
