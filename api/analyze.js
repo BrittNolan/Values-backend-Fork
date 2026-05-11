@@ -122,7 +122,8 @@ export default async function handler(req, res) {
         .eq('org_id', orgId)
         .eq('is_active', true)
         .maybeSingle()
-      if (!error && data) handbook = data
+     console.log('HANDBOOK LOOKUP:', { orgId, error, dataReceived: !!data })
+     if (!error && data) handbook = data
     }
 
     const basePrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT
