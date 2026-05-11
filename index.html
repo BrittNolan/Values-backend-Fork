@@ -3742,12 +3742,16 @@ function render(d) {
       <div class="qv-situation-box">
         <div class="qv-situation-label">${L.situationLabel}</div>
         <div class="qv-situation-text">"${(window.lastSituation || '').replace(/"/g, '&quot;')}"</div>
-      </div>${d.handbookReference ? `
+      </div>${Array.isArray(d.handbookReference) && d.handbookReference.length > 0 ? `
       <div class="qv-handbook-box">
         <div class="qv-handbook-label">${L.handbookLabel}</div>
-        <div class="qv-handbook-policy">${d.handbookReference.policyName || ''}</div>
-        <div class="qv-handbook-summary">${d.handbookReference.policySummary || ''}</div>
-        ${d.handbookReference.whyRelevant ? `<div class="qv-handbook-why"><strong>${L.handbookWhyLabel}</strong> ${d.handbookReference.whyRelevant}</div>` : ''}
+        ${d.handbookReference.map(p => `
+          <div style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,0.25);">
+            <div class="qv-handbook-policy">${p.policyName || ''}</div>
+            <div class="qv-handbook-summary">${p.policySummary || ''}</div>
+            ${p.whyRelevant ? `<div class="qv-handbook-why"><strong>${L.handbookWhyLabel}</strong> ${p.whyRelevant}</div>` : ''}
+          </div>
+        `).join('')}
       </div>
       ` : ''}
 
