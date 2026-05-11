@@ -1,5 +1,10 @@
 {
   "outputDirectory": ".",
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/|admin\\.html).*)", "destination": "/index.html" }
   ]
