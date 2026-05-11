@@ -3742,14 +3742,11 @@ function render(d) {
       <div class="qv-situation-box">
         <div class="qv-situation-label">${L.situationLabel}</div>
         <div class="qv-situation-text">"${(window.lastSituation || '').replace(/"/g, '&quot;')}"</div>
-      </div>${Array.isArray(d.handbookReference) && d.handbookReference.length > 0 ? `
-      <div class="qv-handbook-box">
-        <div class="qv-handbook-label">${L.handbookLabel}</div>
-        ${d.handbookReference.map(p => `
-          <div style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,0.25);">
-            <div class="qv-handbook-policy">${p.policyName || ''}</div>
-            <div class="qv-handbook-summary">${p.policySummary || ''}</div>
-            ${p.whyRelevant ? `<div class="qv-handbook-why"><strong>${L.handbookWhyLabel}</strong> ${p.whyRelevant}</div>` : ''}
+      </div>
+          </div>
+        `).join('')}
+      </div>
+      ` : ''}
           </div>
         `).join('')}
       </div>
@@ -3776,7 +3773,12 @@ function render(d) {
         <button class="qv-tab-btn" role="tab" data-tab="save" onclick="switchQvTab('save')">
           <div class="qv-tab-dot"></div>
           <span>${L.saveThis}</span>
+        </button>${Array.isArray(d.handbookReference) && d.handbookReference.length > 0 ? `
+        <button class="qv-tab-btn" role="tab" data-tab="handbook" onclick="switchQvTab('handbook')">
+          <div class="qv-tab-dot"></div>
+          <span>${L.handbookLabel}</span>
         </button>
+        ` : ''}
       </div>
 
       <div class="qv-tab-panel" data-panel="do">
@@ -3819,7 +3821,23 @@ function render(d) {
           <div class="qv-card-text">${qv.saveThis && qv.saveThis.trim() ? qv.saveThis : L.saveThisEmpty}</div>
         </div>
       </div>
-    </div>
+    </div>${Array.isArray(d.handbookReference) && d.handbookReference.length > 0 ? `
+      <div class="qv-tab-panel" data-panel="handbook">
+        <div class="qv-card">
+          <div class="qv-card-header">
+            <div class="qv-card-dot"></div>
+            <div class="qv-card-label">${L.handbookLabel}</div>
+          </div>
+          ${d.handbookReference.map(p => `
+            <div style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(201,168,76,0.25);">
+              <div class="qv-handbook-policy">${p.policyName || ''}</div>
+              <div class="qv-handbook-summary">${p.policySummary || ''}</div>
+              ${p.whyRelevant ? `<div class="qv-handbook-why"><strong>${L.handbookWhyLabel}</strong> ${p.whyRelevant}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
 
     <button class="btn-expand" id="btn-expand-full" onclick="toggleFullAnalysis()">
       <span id="btn-expand-label">${L.showFull}</span>
