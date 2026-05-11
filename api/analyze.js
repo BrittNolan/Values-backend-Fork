@@ -1,14 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
-import { ORG_HANDBOOK } from './lifemoves-handbook.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
 
-const HANDBOOK_BLOCK = `
+function buildHandbookBlock(handbook) {
+  if (!handbook) return ''
+  return `
 
-=== ORGANIZATIONAL HANDBOOK (${ORG_HANDBOOK.handbookVersion}) ===
-The following are official ${ORG_HANDBOOK.organization} policies. Use them to populate the "handbookReference" field in your JSON response.
+=== ORGANIZATIONAL HANDBOOK (${handbook.handbook_version || 'current version'}) ===
+The following are official ${handbook.org_name || 'organizational'} policies. Use them to populate the "handbookReference" field in your JSON response.
 
 RULES FOR handbookReference:
 - It MUST be an array (use [] if no policies apply, never null, never an object).
@@ -24,10 +25,11 @@ Each policy object in the array MUST have exactly these three fields:
   "whyRelevant": "1 sentence on why this policy applies to THIS specific situation"
 }
 
-${ORG_HANDBOOK.policies}
+${handbook.policies}
 
-For complex policy questions or formal complaints, one of the handbookReference items may direct the leader to contact HR (${ORG_HANDBOOK.hrContact}).
+For complex policy questions or formal complaints, one of the handbookReference items may direct the leader to contact HR (${handbook.hr_contact || 'their HR department'}).
 `
+}
 
 const DEFAULT_SYSTEM_PROMPT = `You are a leadership coach trained in values-based, trauma-informed leadership in a social services organization. Your task is to analyze a staff behavior situation and produce a structured leadership response.
 
@@ -80,13 +82,26 @@ Respond ONLY in this JSON format with no markdown, no preamble, no backticks. Th
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  const { situation, pattern, systemPrompt } = req.body
+  const { situation, pattern, systemPrompt, orgId } = req.body
   if (!situation || situation.trim().length < 10) {
     return res.status(400).json({ error: 'Please provide a situation description.' })
   }
   try {
+    // Look up handbook for this org, if one exists and is active
+    let handbook = null
+    if (orgId) {
+      const { data, error } = await supabase
+        .from('handbooks')
+        .select('org_name, handbook_version, hr_contact, policies')
+        .eq('org_id', orgId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (!error && data) handbook = data
+    }
+
     const basePrompt = systemPrompt || DEFAULT_SYSTEM_PROMPT
-    const fullPrompt = basePrompt + HANDBOOK_BLOCK
+    const handbookBlock = buildHandbookBlock(handbook)
+    const fullPrompt = basePrompt + handbookBlock
 
     const message = await client.messages.create({
       model: 'claude-opus-4-5',
