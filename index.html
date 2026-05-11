@@ -1616,7 +1616,57 @@ textarea.values-input {
   }
 }
 
-
+/* ==================== HANDBOOK REFERENCE BOX ==================== */
+.qv-handbook-box {
+  background: #FBF6E8;
+  border: 1px solid rgba(201,168,76,0.4);
+  border-left: 4px solid var(--gold-deep);
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  margin-bottom: 1rem;
+}
+.qv-handbook-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gold-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qv-handbook-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--gold-deep);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.qv-handbook-policy {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.qv-handbook-summary {
+  font-size: 14px;
+  color: var(--stone-700);
+  line-height: 1.65;
+  font-weight: 400;
+  margin-bottom: 8px;
+}
+.qv-handbook-why {
+  font-size: 13px;
+  color: var(--stone-600);
+  line-height: 1.6;
+  font-style: italic;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201,168,76,0.3);
+}
 /* ==================== SITUATION VERBATIM BOX ==================== */
 .qv-situation-box {
   background: var(--stone-50);
@@ -3626,7 +3676,8 @@ function render(d) {
     expectation: 'Expectativa', alignmentStatement: 'Declaración de alineación',
     recommendedAction: 'Acción recomendada',
     doThis: 'Haga esto', sayThis: 'Diga esto', watchForThis: 'Observe esto', saveThis: 'Documente esto',
-    situationLabel: 'La situación que describió',
+    situationLabel: 'La situación que describió',handbookLabel: 'Política del manual relevante',
+    handbookWhyLabel: 'Por qué es relevante:',
     saveThisEmpty: 'Haga una nota breve de esta conversación para sus registros: fecha, lo que observó, lo que discutió, y la respuesta del miembro del personal. Esto establece una base si el comportamiento se repite.',
     showFull: 'Ver análisis completo', hideFull: 'Ocultar análisis completo',
     onTheGoHeader: 'Herramienta de Liderazgo en el Momento',
@@ -3649,7 +3700,8 @@ function render(d) {
     expectation: 'Expectation', alignmentStatement: 'Alignment statement',
     recommendedAction: 'Recommended action',
     doThis: 'Do this', sayThis: 'Say this', watchForThis: 'Watch for this', saveThis: 'Save this',
-    situationLabel: 'The situation you described',
+    situationLabel: 'The situation you described',handbookLabel: 'Relevant handbook policy',
+    handbookWhyLabel: 'Why this applies:',
     saveThisEmpty: 'Make a brief note of this conversation for your records: date, what you observed, what you discussed, and the staff member\'s response. This establishes a baseline if the behavior recurs.',
     showFull: 'Show full analysis', hideFull: 'Hide full analysis',
     onTheGoHeader: 'On the Go Leadership Tool',
@@ -3690,7 +3742,14 @@ function render(d) {
       <div class="qv-situation-box">
         <div class="qv-situation-label">${L.situationLabel}</div>
         <div class="qv-situation-text">"${(window.lastSituation || '').replace(/"/g, '&quot;')}"</div>
+      </div>${d.handbookReference ? `
+      <div class="qv-handbook-box">
+        <div class="qv-handbook-label">${L.handbookLabel}</div>
+        <div class="qv-handbook-policy">${d.handbookReference.policyName || ''}</div>
+        <div class="qv-handbook-summary">${d.handbookReference.policySummary || ''}</div>
+        ${d.handbookReference.whyRelevant ? `<div class="qv-handbook-why"><strong>${L.handbookWhyLabel}</strong> ${d.handbookReference.whyRelevant}</div>` : ''}
       </div>
+      ` : ''}
 
       <div class="qv-action-banner ${ac}">
         <span class="qv-action-chip">${d.recommendedAction.action}</span>
