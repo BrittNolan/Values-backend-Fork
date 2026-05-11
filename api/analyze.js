@@ -8,9 +8,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 const HANDBOOK_BLOCK = `
 
 === ORGANIZATIONAL HANDBOOK (${ORG_HANDBOOK.handbookVersion}) ===
-The following are official ${ORG_HANDBOOK.organization} policies. When a situation directly implicates one of these policies, reference the specific policy section by name in your "behaviorObserved", "staffReality", "correctBehavior", or "recommendedAction.reasoning" fields. Quote the policy language briefly when it strengthens the response. Do NOT force handbook references when they are not relevant — values-based coaching is the primary lens; the handbook is a supporting reference.
+The following are official ${ORG_HANDBOOK.organization} policies. If the situation directly implicates one or more of these policies, populate the "handbookReference" field in the JSON response with the relevant policy name(s) and a brief summary of what the policy says. If no policy is directly implicated, set "handbookReference" to null. Do NOT mix handbook language into the values-based coaching fields ("behaviorObserved", "staffReality", "correctBehavior", "conversationScript"). Keep the handbook reference separate and clean. The coaching fields should remain values-based and trauma-informed.
 ${ORG_HANDBOOK.policies}
-For complex policy questions or formal complaints, the recommendedAction reasoning may direct the leader to contact HR (${ORG_HANDBOOK.hrContact}).
+For complex policy questions or formal complaints, the "handbookReference" may direct the leader to contact HR (${ORG_HANDBOOK.hrContact}).
 `
 
 const DEFAULT_SYSTEM_PROMPT = `You are a leadership coach trained in values-based, trauma-informed leadership in a social services organization. Your task is to analyze a staff behavior situation and produce a structured leadership response.
@@ -51,8 +51,15 @@ Respond ONLY in this JSON format with no markdown, no preamble, no backticks:
     "expectation": "string",
     "alignmentStatement": "string"
   },
-  "recommendedAction": {"action": "Coach|Document|Escalate", "reasoning": "string"}
-}`
+  "recommendedAction": {"action": "Coach|Document|Escalate", "reasoning": "string"},
+  "handbookReference": {
+    "policyName": "string",
+    "policySummary": "string",
+    "whyRelevant": "string"
+  }
+}
+
+If no handbook policy is directly relevant, set "handbookReference" to null.`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
