@@ -3629,13 +3629,11 @@ Respond ONLY in this JSON format with no markdown, no preamble, no backticks:
 "saveThis": "string — always return documentation guidance, tailored to the recommended action"
 },
 "recommendedAction": {"action": "Coach|Document|Escalate", "reasoning": "string"},
-"handbookReference": [
-  {"policyName": "string — exact section name from the organizational handbook included later in this prompt", "policySummary": "string — 1-2 sentence summary of what the policy says", "whyRelevant": "string — 1 sentence on why this policy applies to THIS specific situation"}
-]
+"handbookReference": []
 }
 
-CRITICAL: The "handbookReference" array must be populated whenever the organizational handbook (included later in this prompt) contains policies that apply to the situation. For workplace behavior scenarios — attendance, performance, accommodation, leave, conduct, etc. — at least 1-3 policies will typically apply. Only return an empty [] if the handbook truly contains no related policies. Use the EXACT policy section names from the handbook headers.`;
-}`;
+CRITICAL: The "handbookReference" array must be populated with 1-3 policy objects whenever the organizational handbook (included later in this prompt) contains policies that apply to the situation. Each policy object must have these three string fields: policyName (exact section name from the handbook), policySummary (1-2 sentence summary), whyRelevant (1 sentence on why this policy applies to THIS situation). Use the EXACT policy section names from the handbook headers. Only return an empty handbookReference array if the handbook truly contains no related policies.
+`;
 
   try {
     const res = await fetch('/api/analyze', {
