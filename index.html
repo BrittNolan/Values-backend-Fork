@@ -3644,6 +3644,13 @@ CRITICAL: The "handbookReference" array must be populated with 1-3 policy object
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Something went wrong.');
     lastResult = data;
+    if (lastResult && lastResult.handbookReference && !Array.isArray(lastResult.handbookReference) && Array.isArray(lastResult.handbookReference.policies)) {
+      lastResult.handbookReference = lastResult.handbookReference.policies.map(p => ({
+        policyName: p.name || p.policyName || '',
+        policySummary: p.summary || p.policySummary || '',
+        whyRelevant: p.whyRelevant || ''
+      }));
+    }
     render(data);
     // If this was a direct Detailed-Mode run (not routed through generateFast),
     // mark the body so CSS hides the On the Go quick-view and shows the full analysis.
