@@ -1,13 +1,5 @@
 {
   "outputDirectory": ".",
-  "functions": {
-    "api/analyze.js": {
-      "maxDuration": 60
-    },
-    "api/speak.js": {
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     { "source": "/((?!api/|admin\\.html).*)", "destination": "/index.html" }
   ]
