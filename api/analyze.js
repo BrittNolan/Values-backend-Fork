@@ -53,13 +53,16 @@ Respond ONLY in this JSON format with no markdown, no preamble, no backticks:
   },
   "recommendedAction": {"action": "Coach|Document|Escalate", "reasoning": "string"},
   "handbookReference": {
-    "policyName": "string",
-    "policySummary": "string",
-    "whyRelevant": "string"
-  }
+  "handbookReference": [
+    {
+      "policyName": "string — exact section name from the handbook, e.g. 'Paid Sick Leave' or 'Holiday Pay'",
+      "policySummary": "string — 1-2 sentence summary of what the policy says",
+      "whyRelevant": "string — 1 sentence on why this policy applies to THIS situation"
+    }
+  ]
 }
 
-If no handbook policy is directly relevant, set "handbookReference" to null.`
+The "handbookReference" field must be an ARRAY of objects. If one policy applies, return an array with one object. If multiple apply, return multiple objects (up to 3 maximum). If no handbook policy is directly relevant, set "handbookReference" to an empty array [].`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
