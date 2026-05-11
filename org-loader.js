@@ -662,8 +662,20 @@
     // a result object. To save sessions to Supabase tagged with the
     // org_id, we wrap the global fetch so that when /api/analyze
     // returns successfully, we also write a row to the sessions table.
-    const originalFetch = window.fetch;
+   const originalFetch = window.fetch;
     window.fetch = async function (input, init) {
+      // Inject org_id into /api/analyze requests so the backend can look up the right handbook
+      try {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (url.includes('/api/analyze') && currentOrg && init && init.body) {
+          const body = JSON.parse(init.body);
+          if (!body.orgId) {
+            body.orgId = currentOrg.id;
+            init.body = JSON.stringify(body);
+          }
+        }
+      } catch (e) { /* ignore - request will proceed without org_id */ }
+
       const response = await originalFetch.apply(this, arguments);
       try {
         const url = typeof input === 'string' ? input : (input && input.url) || '';
