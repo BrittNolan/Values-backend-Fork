@@ -9,20 +9,31 @@ function buildHandbookBlock(handbook) {
   return `
 
 === ORGANIZATIONAL HANDBOOK (${handbook.handbook_version || 'current version'}) ===
-The following are official ${handbook.org_name || 'organizational'} policies. Use them to populate the "handbookReference" field in your JSON response.
+The following are official ${handbook.org_name || 'organizational'} policies.
+
+CRITICAL SCHEMA ADDITION: In addition to whatever JSON fields are specified elsewhere in this prompt, you MUST also add a top-level field called "handbookReference" to your JSON response. This field is REQUIRED even if no policies apply (return [] in that case).
 
 RULES FOR handbookReference:
-- It MUST be an array (use [] if no policies apply, never null, never an object).
+- It MUST be an array (use [] if no policies apply, never null, never an object, never omitted).
 - Each item in the array represents ONE policy that directly applies to the situation.
 - Include up to 3 most relevant policies. If only one applies, return an array with one item.
 - If no policy directly applies, return an empty array: []
-- Do NOT mix handbook language into the coaching fields (behaviorObserved, staffReality, correctBehavior, conversationScript, recommendedAction.reasoning). Keep handbook references ONLY in the handbookReference array.
+- Do NOT mix handbook language into the other coaching fields. Keep handbook references ONLY in the handbookReference array.
 
 Each policy object in the array MUST have exactly these three fields:
 {
   "policyName": "the exact section name from the handbook, e.g. 'Paid Sick Leave' or 'Holiday Pay'",
   "policySummary": "1-2 sentence summary of what the policy says",
   "whyRelevant": "1 sentence on why this policy applies to THIS specific situation"
+}
+
+Example of how handbookReference fits in your response (combined with all other fields from the schema above):
+{
+  ...all other fields the schema requires...,
+  "handbookReference": [
+    {"policyName": "Paid Sick Leave", "policySummary": "...", "whyRelevant": "..."},
+    {"policyName": "Holiday Pay", "policySummary": "...", "whyRelevant": "..."}
+  ]
 }
 
 ${handbook.policies}
