@@ -14,16 +14,25 @@ The following are official ${handbook.org_name || 'organizational'} policies.
 CRITICAL SCHEMA ADDITION: In addition to whatever JSON fields are specified elsewhere in this prompt, you MUST also add a top-level field called "handbookReference" to your JSON response. This field is REQUIRED even if no policies apply (return [] in that case).
 
 RULES FOR handbookReference:
-- It MUST be an array (use [] only if you have read every policy and none directly apply).
-- Default to INCLUDING policies. Most workplace situations touch on attendance, leave, accommodations, conduct, or scheduling — all of which are in the handbook below. Err on the side of identifying applicable policies rather than omitting them.
-- For ANY attendance, tardiness, call-in, or absence pattern: include the Attendance/Punctuality/Absenteeism policy.
-- For ANY mention of caregiving, family health, or recurring health issues affecting work: include the FMLA/CFRA policy AND the Reasonable Accommodation policy.
-- For ANY suspected impairment, substance use, or "under the influence" cues: include the Drug and Alcohol Policy.
-- For ANY harassment, discrimination, retaliation, or hostile environment indicators: include the Anti-Discrimination policy and the Complaint Procedure.
-- For ANY repeated behavior, disciplinary scenario, or pattern that warrants documentation: include the Discipline/Performance Improvement policy.
-- For ANY mention of holidays, holiday pay, or time-off requests: include the Holiday Pay or PTO policy.
-- For ANY late or missing call-ins beyond the threshold: include Job Abandonment.
-- Include up to 3 most relevant policies. If more than 3 apply, pick the 3 most central.
+- It MUST be an array. If at least one policy is even tangentially related to the situation, you MUST include it. An empty array [] is only appropriate for truly off-topic situations (e.g. "How do I write a thank-you note to a donor?").
+- For ANY workplace behavior situation — attendance, performance, conflict, accommodation, leave, conduct, scheduling, time-keeping, communication — you MUST find at least 1-3 applicable policies in the handbook.
+- Mandatory matches:
+  * Late arrival, tardiness, no-call/no-show, absence patterns → Attendance, Punctuality, Absenteeism
+  * Caregiving, eldercare, childcare affecting work → FMLA/CFRA + Reasonable Accommodation
+  * Medical condition or health affecting work → FMLA/CFRA + Reasonable Accommodation + Paid Sick Leave
+  * Holiday-adjacent absence → Holiday Pay + Paid Sick Leave + Attendance
+  * Suspected impairment (drugs, alcohol, behavior changes) → Drug and Alcohol Policy
+  * Repeated behavior requiring documentation → Discipline / Performance Improvement
+  * Timekeeping issues, missed timesheet, off-the-clock work → Timekeeping / Wage & Hour
+  * Break or meal period concerns → Meal & Rest Breaks
+  * Pregnancy, lactation, postpartum → Pregnancy Disability Leave + Lactation Accommodation
+  * Bereavement, death in family → Bereavement Leave
+  * Jury duty, court appearance → Jury Duty / Court Appearance
+  * Romantic relationship at work → Non-Fraternization
+  * Work injury → Workers' Compensation
+  * Resignation, termination, final pay → Leaving LifeMoves
+- Maximum 3 policies per response. Pick the most central ones.
+- Use the EXACT policy names from the handbook section headers (the ones in CAPS LIKE THIS).
 - Do NOT mix handbook language into the other coaching fields. Keep handbook references ONLY in the handbookReference array.
 
 Each policy object in the array MUST have exactly these three fields:
