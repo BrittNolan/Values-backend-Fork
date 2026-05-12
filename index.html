@@ -3404,7 +3404,8 @@ function switchMode(mode) {
   // re-run the analysis or hide the results.
   // Practice mode gets its own results screen, so it always exits this preservation logic.
   const resultsVisible = document.getElementById('results-view').style.display === 'block';
-   if (resultsVisible && lastResult && mode !== 'practice' && mode !== 'roleplay') { one in  if (mode === 'fast') {
+  if (resultsVisible && lastResult && mode !== 'practice' && mode !== 'roleplay') {
+    if (mode === 'fast') {
       document.body.classList.add('fast-results');
       document.body.classList.remove('detailed-results');
     } else {
