@@ -3387,10 +3387,57 @@ function selectFastPattern(val) {
   });
 }
 function startRolePlay(mode) {
+  // Save the mode so we can use it later in the chat
+  window.roleplayState = {
+    mode: mode,
+    conversation: []
+  };
+
+  // Hide the picker, show the chat area with a loading message
   document.getElementById('roleplay-picker').style.display = 'none';
   document.getElementById('roleplay-chat').style.display = 'block';
   document.getElementById('roleplay-chat').innerHTML =
-    '<div style="padding:24px; text-align:center; color:#5f5e5a; font-size:13px;">You picked: <strong>' + mode + '</strong>. The chat experience will be added in the next step.</div>';
+    '<div style="padding:24px; text-align:center; color:#5f5e5a; font-size:13px;">Setting up your practice...</div>';
+
+  // Get the scenario and values from what the leader entered earlier
+  // For now we use a test scenario so we can prove the backend works.
+  // We will wire this to the real scenario later.
+  const scenario = "A staff member has been late three times this month. The leader wants to address it with care while still naming the pattern.";
+  const valuesAnalysis = "Respect and accountability are the values in play.";
+
+  // Call the backend
+  fetch('/api/roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scenario: scenario,
+      valuesAnalysis: valuesAnalysis,
+      mode: mode,
+      conversation: []
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      document.getElementById('roleplay-chat').innerHTML =
+        '<div style="padding:24px; text-align:center; color:#b91c1c; font-size:13px;">Something went wrong: ' + data.error + '</div>';
+      return;
+    }
+    // Save the staff opener to the conversation history
+    window.roleplayState.conversation.push({ role: 'staff', text: data.staffReply });
+    // Show the staff opener in the chat
+    document.getElementById('roleplay-chat').innerHTML =
+      '<div style="padding:16px; background:#fff; border:0.5px solid #d9d6cc; border-radius:8px; margin-bottom:12px;">' +
+      '<div style="font-size:11px; color:#888780; margin-bottom:6px;">Staff member</div>' +
+      '<div style="font-size:14px; color:#1a1a1a; line-height:1.55;">' + data.staffReply + '</div>' +
+      '</div>' +
+      '<div style="font-size:12px; color:#888780; text-align:center; margin-top:16px;">Chat input coming in the next step. For now this confirms the backend is working.</div>';
+  })
+  .catch(err => {
+    document.getElementById('roleplay-chat').innerHTML =
+      '<div style="padding:24px; text-align:center; color:#b91c1c; font-size:13px;">Could not reach the server. Check the console for details.</div>';
+    console.error('Role play error:', err);
+  });
 }
 function switchMode(mode) {
   currentMode = mode;
