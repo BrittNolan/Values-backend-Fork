@@ -2595,7 +2595,38 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
   <div class="results-card" id="results-card"></div>
   <div class="footer"><p id="footer-powered-by-1">Powered by <strong>Karabed Leadership Group</strong> — Values Align App</p></div>
 </div>
+<!-- ==================== ROLE PLAY MODE ==================== -->
+<div id="roleplay-mode" style="display:none">
+  <div class="fast-card">
+    <div class="fast-eyebrow" id="roleplay-eyebrow">Role Play &mdash; Practice the conversation</div>
+    <div class="fast-title" id="roleplay-title">How do you want to practice this?</div>
+    <div class="fast-subtitle" id="roleplay-subtitle">Pick the staff response that would stretch you most right now. You can always come back and try the others.</div>
 
+    <div id="roleplay-picker" style="display:flex; flex-direction:column; gap:12px; margin-top:24px;">
+
+      <button type="button" onclick="startRolePlay('defensive')" style="text-align:left; background:#fff; border:0.5px solid #d9d6cc; border-radius:8px; padding:16px; cursor:pointer; font-family:inherit;">
+        <div style="font-weight:500; font-size:15px; color:#1B2A4A; margin-bottom:6px;">Defensive</div>
+        <div style="font-size:13px; color:#5f5e5a; line-height:1.5;">Staff pushes back, deflects, or minimizes. Builds your skill at staying calm and curious under pressure.</div>
+      </button>
+
+      <button type="button" onclick="startRolePlay('receptive')" style="text-align:left; background:#fff; border:0.5px solid #d9d6cc; border-radius:8px; padding:16px; cursor:pointer; font-family:inherit;">
+        <div style="font-weight:500; font-size:15px; color:#1B2A4A; margin-bottom:6px;">Receptive</div>
+        <div style="font-size:13px; color:#5f5e5a; line-height:1.5;">Staff is open, reflective, maybe vulnerable. Builds your skill at holding space and going deeper without rushing.</div>
+      </button>
+
+      <button type="button" onclick="startRolePlay('shutdown')" style="text-align:left; background:#fff; border:0.5px solid #d9d6cc; border-radius:8px; padding:16px; cursor:pointer; font-family:inherit;">
+        <div style="font-weight:500; font-size:15px; color:#1B2A4A; margin-bottom:6px;">Shut down</div>
+        <div style="font-size:13px; color:#5f5e5a; line-height:1.5;">Staff is quiet, gives short answers, withdrawn. Builds your skill at drawing someone out without pushing.</div>
+      </button>
+
+    </div>
+
+    <div id="roleplay-chat" style="display:none; margin-top:24px;">
+      <div style="padding:24px; text-align:center; color:#5f5e5a; font-size:13px;">Chat is coming in the next step. For now this just confirms the picker is working.</div>
+    </div>
+
+  </div>
+</div>
 <!-- ==================== PRACTICE RESULTS ==================== -->
 <div id="practice-results" style="display:none">
   <div class="results-card" id="practice-results-card"></div>
@@ -3355,20 +3386,25 @@ function selectFastPattern(val) {
     b.classList.toggle('active', b.getAttribute('data-pattern') === val);
   });
 }
-
+function startRolePlay(mode) {
+  document.getElementById('roleplay-picker').style.display = 'none';
+  document.getElementById('roleplay-chat').style.display = 'block';
+  document.getElementById('roleplay-chat').innerHTML =
+    '<div style="padding:24px; text-align:center; color:#5f5e5a; font-size:13px;">You picked: <strong>' + mode + '</strong>. The chat experience will be added in the next step.</div>';
+}
 function switchMode(mode) {
   currentMode = mode;
   document.getElementById('mode-btn-fast').classList.toggle('active', mode === 'fast');
   document.getElementById('mode-btn-detailed').classList.toggle('active', mode === 'detailed');
   document.getElementById('mode-btn-practice').classList.toggle('active', mode === 'practice');
+  document.getElementById('mode-btn-roleplay').classList.toggle('active', mode === 'roleplay');
 
   // --- IMPORTANT: if a result is already on screen, preserve it ---
   // We only flip the layout (On-the-Go only vs. full analysis) — we do NOT
   // re-run the analysis or hide the results.
   // Practice mode gets its own results screen, so it always exits this preservation logic.
   const resultsVisible = document.getElementById('results-view').style.display === 'block';
-  if (resultsVisible && lastResult && mode !== 'practice') {
-    if (mode === 'fast') {
+   if (resultsVisible && lastResult && mode !== 'practice' && mode !== 'roleplay') { one in  if (mode === 'fast') {
       document.body.classList.add('fast-results');
       document.body.classList.remove('detailed-results');
     } else {
@@ -3384,6 +3420,7 @@ function switchMode(mode) {
   document.getElementById('step-1').style.display = 'none';
   document.getElementById('step-2').style.display = 'none';
   document.getElementById('practice-mode').style.display = 'none';
+  document.getElementById('roleplay-mode').style.display = 'none';
   document.getElementById('practice-results').style.display = 'none';
   document.getElementById('results-view').style.display = 'none';
   document.getElementById('loading-view').style.display = 'none';
@@ -3396,6 +3433,8 @@ function switchMode(mode) {
   } else if (mode === 'practice') {
     document.getElementById('practice-mode').style.display = 'block';
     renderPracticeValuesBar();
+    } else if (mode === 'roleplay') {
+    document.getElementById('roleplay-mode').style.display = 'block';
   } else {
     document.getElementById('step-1').style.display = 'block';
     // Pre-fill saved values into detailed step 1 if any
