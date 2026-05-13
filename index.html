@@ -3422,8 +3422,19 @@ function startRolePlay(mode) {
   messagesEl.innerHTML = '<div style="text-align:center; color:#888780; font-size:13px; padding:16px;">Setting up your practice...</div>';
 
   // Test scenario for now. Next session we will pull from the leader's actual entry.
-  const scenario = "A staff member has been late three times this month. The leader wants to address it with care while still naming the pattern.";
-  const valuesAnalysis = "Respect and accountability are the values in play.";
+  // Pull the real scenario from the leader's input (Detailed or Fast mode)
+  const detailedSituation = document.getElementById('f-situation') ? document.getElementById('f-situation').value.trim() : '';
+  const fastSituation = document.getElementById('fast-situation') ? document.getElementById('fast-situation').value.trim() : '';
+  const scenario = detailedSituation || fastSituation || 'No scenario provided.';
+
+  // Pull values analysis from the most recent result if available
+  let valuesAnalysis = 'No values analysis yet.';
+  if (lastResult) {
+    const valuesPiece = lastResult.valuesInPlay || lastResult.valuesAnalysis || lastResult.values || '';
+    if (valuesPiece) {
+      valuesAnalysis = typeof valuesPiece === 'string' ? valuesPiece : JSON.stringify(valuesPiece);
+    }
+  }
 
   // Get the staff member's opening line from the backend
   fetch('/api/roleplay', {
@@ -3478,8 +3489,19 @@ function sendRolePlayMessage() {
   messagesEl.appendChild(thinkingEl);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
-  const scenario = "A staff member has been late three times this month. The leader wants to address it with care while still naming the pattern.";
-  const valuesAnalysis = "Respect and accountability are the values in play.";
+  // Pull the real scenario from the leader's input (Detailed or Fast mode)
+  const detailedSituation = document.getElementById('f-situation') ? document.getElementById('f-situation').value.trim() : '';
+  const fastSituation = document.getElementById('fast-situation') ? document.getElementById('fast-situation').value.trim() : '';
+  const scenario = detailedSituation || fastSituation || 'No scenario provided.';
+
+  // Pull values analysis from the most recent result if available
+  let valuesAnalysis = 'No values analysis yet.';
+  if (lastResult) {
+    const valuesPiece = lastResult.valuesInPlay || lastResult.valuesAnalysis || lastResult.values || '';
+    if (valuesPiece) {
+      valuesAnalysis = typeof valuesPiece === 'string' ? valuesPiece : JSON.stringify(valuesPiece);
+    }
+  }
 
   fetch('/api/roleplay', {
     method: 'POST',
