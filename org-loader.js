@@ -294,7 +294,7 @@
         // switches there. This matches what switchMode('detailed') does
         // when there are stored values, but applied immediately.
         const detailedValuesInput = document.getElementById('f-values');
-        if (detailedValuesInput) {
+        if (detailedValuesInput && detailedValuesInput.value.trim() === '') {
           detailedValuesInput.value = valueNames.join(', ');
           detailedValuesInput.dispatchEvent(new Event('input'));
         }
