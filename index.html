@@ -571,6 +571,24 @@ body.detailed-results #full-analysis { display: block !important; }
 }
 .values-input::placeholder { color: var(--stone-400); font-weight: 300; }
 
+.values-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--stone-500);
+  font-family: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.values-clear-btn:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
 textarea.values-input {
   min-height: 180px;
   resize: vertical;
@@ -586,6 +604,39 @@ textarea.values-input {
   font-weight: 300;
   line-height: 1.5;
 }
+
+.privacy-notice {
+  background: var(--warning-bg);
+  border: 1px solid var(--gold-deep);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.privacy-notice-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--warning);
+  margin-top: 1px;
+}
+.privacy-notice-body {
+  font-size: 13px;
+  color: var(--stone-700);
+  line-height: 1.5;
+  font-weight: 400;
+}
+.privacy-notice-title {
+  font-weight: 600;
+  color: var(--warning);
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+html[data-text-size="s"] .privacy-notice-body { font-size: 12px; }
+html[data-text-size="l"] .privacy-notice-body { font-size: 14px; }
 
 .pills-wrap {
   display: flex;
@@ -2293,6 +2344,17 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
 
     <div class="field-group">
       <label class="field-label" id="fast-situation-label">The behavior</label>
+      <div class="privacy-notice" role="note" aria-labelledby="fast-privacy-title">
+        <svg class="privacy-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2L3 7v6c0 5 3.5 9.5 9 11 5.5-1.5 9-6 9-11V7l-9-5z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <div class="privacy-notice-body">
+          <div class="privacy-notice-title" id="fast-privacy-title">Protect privacy — do not include identifying information</div>
+          <span id="fast-privacy-body">Please do not enter names, dates of birth, addresses, phone numbers, client IDs, or any other identifying details about staff or clients. Describe the behavior and context only.</span>
+        </div>
+      </div>
       <textarea class="values-input" id="fast-f-situation" placeholder="Example: A staff member raised their voice at a client during intake when the client could not locate their ID."></textarea>
     </div>
 
@@ -2394,9 +2456,12 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
     </div>
 
     <div class="field-group">
-      <label class="field-label" id="step-1-label">Organizational values</label>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+        <label class="field-label" id="step-1-label">Organizational values</label>
+        <button type="button" class="values-clear-btn" id="values-clear-btn" onclick="clearValuesInput()">Clear all</button>
+      </div>
       <input type="text" class="values-input" id="f-values" placeholder="e.g., Client-Centered, Respect, Integrity, Collaboration" />
-      <div class="field-hint" id="step-1-hint">Type your own, or tap from the common values below.</div>
+      <div class="field-hint" id="step-1-hint">Type your own, edit existing values, or tap from the common values below.</div>
       <div id="values-pills" class="pills-wrap" style="margin-top:14px;"></div>
     </div>
 
@@ -2494,8 +2559,19 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
 
     <div class="field-group">
       <label class="field-label" id="step-2-label">The behavior</label>
+      <div class="privacy-notice" role="note" aria-labelledby="step-2-privacy-title">
+        <svg class="privacy-notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2L3 7v6c0 5 3.5 9.5 9 11 5.5-1.5 9-6 9-11V7l-9-5z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <div class="privacy-notice-body">
+          <div class="privacy-notice-title" id="step-2-privacy-title">Protect privacy — do not include identifying information</div>
+          <span id="step-2-privacy-body">Please do not enter names, dates of birth, addresses, phone numbers, client IDs, or any other identifying details about staff or clients. Describe the behavior and context only.</span>
+        </div>
+      </div>
       <textarea class="values-input" id="f-situation" placeholder="Example: A staff member raised their voice at a client during intake when the client could not locate their ID. Other staff witnessed the interaction."></textarea>
-      <div class="field-hint" id="step-2-hint">Include who was involved, what was said or done, and the context. Avoid identifying details if you'd prefer.</div>
+      <div class="field-hint" id="step-2-hint">Include what was said or done, and the context. Use roles (e.g., "case manager," "intake staff") rather than names.</div>
     </div>
 
     <div class="field-group">
@@ -2772,6 +2848,17 @@ function addPreset(value) {
     input.value = existing.length > 0 ? current + ', ' + value : value;
     input.dispatchEvent(new Event('input'));
   }
+}
+
+function clearValuesInput() {
+  const input = document.getElementById('f-values');
+  if (!input) return;
+  input.value = '';
+  input.dispatchEvent(new Event('input'));
+  // Also clear stored values so they don't reappear when the user switches modes.
+  try { localStorage.removeItem(LS_KEYS.values); } catch (e) {}
+  if (typeof window.orgValues !== 'undefined') window.orgValues = [];
+  input.focus();
 }
 
 function selectSector(btn) {
@@ -3639,11 +3726,13 @@ function switchMode(mode) {
     document.getElementById('roleplay-mode').style.display = 'block';
   } else {
     document.getElementById('step-1').style.display = 'block';
-    // Pre-fill saved values into detailed step 1 if any
+    // Pre-fill saved values into detailed step 1 ONLY if input is empty.
+    // Otherwise the user can't delete values (we'd overwrite their edits on every visit).
     const stored = loadValuesFromStorage();
-    if (stored.values.length) {
-      document.getElementById('f-values').value = stored.values.join(', ');
-      document.getElementById('f-values').dispatchEvent(new Event('input'));
+    const valuesInputEl = document.getElementById('f-values');
+    if (stored.values.length && valuesInputEl && valuesInputEl.value.trim() === '') {
+      valuesInputEl.value = stored.values.join(', ');
+      valuesInputEl.dispatchEvent(new Event('input'));
     }
     if (stored.tone) {
       selectedTone = stored.tone;
@@ -4498,7 +4587,8 @@ const translations = {
   'step-1-title': { en: 'Begin with your values', es: 'Comience con sus valores' },
   'step-1-subtitle': { en: 'The values you enter here become the lens through which the situation is read. Add the ones your organization actually names.', es: 'Los valores que ingresa aquí se convierten en el lente a través del cual se lee la situación. Agregue los que su organización realmente nombra.' },
   'step-1-label': { en: 'Organizational values', es: 'Valores organizacionales' },
-  'step-1-hint': { en: 'Type your own, or tap from the common values below.', es: 'Escriba los suyos, o toque los valores comunes a continuación.' },
+  'values-clear-btn': { en: 'Clear all', es: 'Borrar todo' },
+  'step-1-hint': { en: 'Type your own, edit existing values, or tap from the common values below.', es: 'Escriba los suyos, edite los valores existentes, o seleccione de los valores comunes abajo.' },
   'common-values-label': { en: 'Common organizational values', es: 'Valores organizacionales comunes' },
   'sector-label': { en: 'Sector', es: 'Sector' },
   'sector-optional': { en: 'optional', es: 'opcional' },
@@ -4512,7 +4602,9 @@ const translations = {
   'step-2-title': { en: 'Describe what you observed', es: 'Describa lo que observó' },
   'step-2-subtitle': { en: 'Write the situation as you would describe it to a trusted colleague. The more specific your account, the more grounded the guidance will be.', es: 'Describa la situación como lo haría con un colega de confianza. Cuanto más específica sea su descripción, más fundamentada será la guía.' },
   'step-2-label': { en: 'The behavior', es: 'El comportamiento' },
-  'step-2-hint': { en: "Include who was involved, what was said or done, and the context. Avoid identifying details if you'd prefer.", es: 'Incluya quién estuvo involucrado, qué se dijo o hizo, y el contexto. Evite detalles identificables si prefiere.' },
+  'step-2-privacy-title': { en: 'Protect privacy — do not include identifying information', es: 'Proteja la privacidad — no incluya información identificable' },
+  'step-2-privacy-body': { en: 'Please do not enter names, dates of birth, addresses, phone numbers, client IDs, or any other identifying details about staff or clients. Describe the behavior and context only.', es: 'Por favor no incluya nombres, fechas de nacimiento, direcciones, números de teléfono, identificaciones de clientes ni ningún otro detalle identificable sobre el personal o los clientes. Describa solo el comportamiento y el contexto.' },
+  'step-2-hint': { en: 'Include what was said or done, and the context. Use roles (e.g., "case manager," "intake staff") rather than names.', es: 'Incluya lo que se dijo o hizo, y el contexto. Use roles (por ejemplo, "administrador de caso", "personal de admisión") en lugar de nombres.' },
   'pattern-label': { en: 'Pattern', es: 'Patrón' },
   'pattern-first-text': { en: 'First time', es: 'Primera vez' },
   'pattern-first-desc': { en: 'This is the first observed instance', es: 'Es la primera instancia observada' },
@@ -4570,6 +4662,8 @@ const translations = {
   'fast-values-hint':        { en: "Separate with commas. You'll only enter these once.",
                                es: 'Separe con comas. Solo los ingresará una vez.' },
   'fast-situation-label':    { en: 'The behavior', es: 'El comportamiento' },
+  'fast-privacy-title':      { en: 'Protect privacy — do not include identifying information', es: 'Proteja la privacidad — no incluya información identificable' },
+  'fast-privacy-body':       { en: 'Please do not enter names, dates of birth, addresses, phone numbers, client IDs, or any other identifying details about staff or clients. Describe the behavior and context only.', es: 'Por favor no incluya nombres, fechas de nacimiento, direcciones, números de teléfono, identificaciones de clientes ni ningún otro detalle identificable sobre el personal o los clientes. Describa solo el comportamiento y el contexto.' },
   'fast-pattern-label':      { en: 'Pattern:', es: 'Patrón:' },
   'fast-pat-first':          { en: 'First time', es: 'Primera vez' },
   'fast-pat-repeated':       { en: 'Repeated',   es: 'Repetido' },
