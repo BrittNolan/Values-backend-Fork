@@ -3068,6 +3068,211 @@ ${fullText}
   }
 }
 
+// ===== TEAM MEMBER PERSPECTIVE DETECTION =====
+// ValuesAlign is built for LEADERS coaching their teams. If a user types a scenario
+// from the perspective of a team member experiencing something with their own leader,
+// the app should not coach them as if they are the leader. Instead, redirect with
+// light AHORA-based guidance and a note that a team member tool is on the roadmap.
+
+const TM_KEYWORDS_EN = [
+  'my manager', 'my boss', 'my supervisor', 'my director', 'my leader',
+  'my manager is', 'my boss is', 'my supervisor is',
+  'my manager keeps', 'my boss keeps', 'my supervisor keeps',
+  'my manager said', 'my boss said', 'my supervisor said',
+  'my manager told me', 'my boss told me', 'my supervisor told me',
+  'i feel like my manager', 'i feel like my boss', 'i feel like my supervisor',
+  'how do i talk to my manager', 'how do i talk to my boss', 'how do i talk to my supervisor',
+  'i don\u2019t know what to do', 'i dont know what to do', 'i don\'t know what to do'
+];
+
+const TM_KEYWORDS_ES = [
+  'mi gerente', 'mi jefe', 'mi jefa', 'mi supervisor', 'mi supervisora',
+  'mi director', 'mi directora', 'mi l\u00edder',
+  'no s\u00e9 qu\u00e9 hacer', 'no se que hacer'
+];
+
+function hasTeamMemberKeyword(text) {
+  const lower = text.toLowerCase();
+  const all = TM_KEYWORDS_EN.concat(TM_KEYWORDS_ES);
+  return all.some(kw => lower.includes(kw));
+}
+
+async function isTeamMemberPerspective(message, context) {
+  const fullText = (message + ' ' + (context || '')).slice(0, 2000);
+  const checkPrompt = `You are a careful classifier. ValuesAlign is a coaching tool built for LEADERS who are responding to behavior from someone on their team.
+
+Read the following text and decide who the writer is in the situation:
+
+A) The writer is the LEADER, supervisor, or manager describing behavior from a staff member, team member, or direct report that they need to address.
+B) The writer is a TEAM MEMBER, individual contributor, employee, or staff member describing behavior from their OWN manager, supervisor, director, or leader that is affecting them.
+
+Examples:
+- "A case manager raised their voice at a client" -> LEADER (describing staff behavior)
+- "My staff member keeps showing up late" -> LEADER
+- "How do I address a team member who is gossiping?" -> LEADER
+- "My boss talks to me in a really negative way and I don't know what to do" -> TEAM MEMBER
+- "My supervisor keeps interrupting me in meetings" -> TEAM MEMBER
+- "I want to talk to my manager about how she gives feedback" -> TEAM MEMBER
+- "My director assigned me work that is not in my role" -> TEAM MEMBER
+
+Respond with ONLY a JSON object: {"perspective": "leader"} or {"perspective": "team_member"}. No other text.
+
+Text to analyze:
+"""
+${fullText}
+"""`;
+
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        situation: fullText,
+        pattern: 'tm-check',
+        sector: '',
+        tone: '',
+        systemPrompt: checkPrompt,
+        practiceMode: true
+      })
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    let parsed = data;
+    if (typeof data === 'string' || (data && data.text)) {
+      try {
+        let raw = (data.text || data.content || data).trim().replace(/^```(?:json)?/, '').replace(/```$/,'').trim();
+        parsed = JSON.parse(raw);
+      } catch (e) { return false; }
+    }
+    return parsed && parsed.perspective === 'team_member';
+  } catch (e) {
+    return false;
+  }
+}
+
+function showTeamMemberRedirect(modeContext) {
+  // modeContext: 'practice' | 'fast' | 'detailed'
+  const isEs = currentLang === 'es';
+
+  const L = isEs ? {
+    eyebrow: 'Esta herramienta es para l\u00edderes',
+    title: 'Parece que est\u00e1 navegando algo con su propio l\u00edder',
+    body: 'ValuesAlign est\u00e1 dise\u00f1ado para apoyar a l\u00edderes que est\u00e1n respondiendo al comportamiento de su equipo. Si lo que est\u00e1 viviendo es con su propio l\u00edder o supervisor, esta no es la herramienta correcta para esa conversaci\u00f3n.',
+    bodyTwo: 'Aqu\u00ed hay algunas cosas que puede considerar antes de hablar con su l\u00edder:',
+    tipsTitle: 'Antes de la conversaci\u00f3n',
+    tips: [
+      'Aclare lo que valora. Cu\u00e1l de los valores de su organizaci\u00f3n se siente afectado? Eso es lo que est\u00e1 tratando de proteger en la conversaci\u00f3n.',
+      'Asuma buena intenci\u00f3n. Empiece desde la curiosidad, no desde la culpa. Su l\u00edder puede no saber c\u00f3mo le est\u00e1 impactando.',
+      'Hable desde el cuidado de la relaci\u00f3n. Hagale saber que valora trabajar juntos antes de nombrar lo dificil.',
+      'Nombre lo que pas\u00f3 con hechos, no etiquetas. Describa el momento espec\u00edfico, no caracter del l\u00edder.',
+      'Comparta lo que espera ir adelante. Qu\u00e9 cambio peque\u00f1o le ayudar\u00eda a hacer mejor su trabajo?'
+    ],
+    escalateTitle: 'Si se siente inseguro o no se resuelve',
+    escalateBody: 'Si la situaci\u00f3n involucra discriminaci\u00f3n, acoso, represalias, intimidaci\u00f3n, o si la conversaci\u00f3n no funciona, comuniquese con el supervisor de su l\u00edder o con Recursos Humanos directamente.',
+    futureTitle: 'Estamos trabajando en una herramienta para usted',
+    futureBody: 'Estamos construyendo una herramienta separada dise\u00f1ada espec\u00edficamente para apoyar a miembros del equipo a tener conversaciones alineadas con valores con sus l\u00edderes. M\u00e1s pronto.',
+    backBtn: 'Volver'
+  } : {
+    eyebrow: 'This tool is built for leaders',
+    title: 'It sounds like you are navigating something with your own leader',
+    body: 'ValuesAlign is designed to support leaders who are responding to behavior from their team. If what you are working through is with your own leader or supervisor, this is not the right tool for that conversation.',
+    bodyTwo: 'Here are a few things to consider before talking with your leader:',
+    tipsTitle: 'Before the conversation',
+    tips: [
+      'Get clear on what you value. Which of your organization\u2019s values feels at stake for you? That is what you are trying to protect in the conversation.',
+      'Assume good intent. Start from curiosity, not blame. Your leader may not know how this is landing on you.',
+      'Lead with care for the relationship. Let them know you value working together before naming the hard part.',
+      'Name what happened with facts, not labels. Describe the specific moment, not your leader\u2019s character.',
+      'Share what you are hoping for going forward. What small shift would help you do your best work?'
+    ],
+    escalateTitle: 'If you feel unsafe or it does not get resolved',
+    escalateBody: 'If the situation involves discrimination, harassment, retaliation, bullying, or if the conversation does not work, please reach out to your leader\u2019s supervisor or Human Resources directly.',
+    futureTitle: 'We are building a tool for you',
+    futureBody: 'We are working on a separate tool designed specifically to support team members in having values-aligned conversations with their leaders. More soon.',
+    backBtn: 'Back'
+  };
+
+  const tipsHTML = L.tips.map(t => `<li style="margin-bottom:0.6rem;color:#3a3833;line-height:1.55;">${t}</li>`).join('');
+
+  const warningHTML = `
+    <div style="background:#F4EFE2;border-left:5px solid #C9A84C;border-radius:10px;padding:2rem 2.25rem;margin-bottom:1.5rem;">
+      <div style="font-size:11px;font-weight:700;color:#8a6a1a;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:0.75rem;display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        ${L.eyebrow}
+      </div>
+      <h2 style="font-family:'Playfair Display',serif;color:#1B2A4A;font-size:1.7rem;font-weight:600;line-height:1.25;margin-bottom:1rem;">${L.title}</h2>
+      <p style="color:#3a3833;font-size:1.02rem;line-height:1.6;margin-bottom:1rem;">${L.body}</p>
+      <p style="color:#3a3833;font-size:1.02rem;line-height:1.6;">${L.bodyTwo}</p>
+    </div>
+
+    <div style="background:#FAFAF7;border:1px solid #E4E1D8;border-radius:10px;padding:1.75rem 2rem;margin-bottom:1.5rem;">
+      <div style="font-size:11px;font-weight:600;color:#1B2A4A;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:0.85rem;">${L.tipsTitle}</div>
+      <ol style="padding-left:1.2rem;margin:0;">${tipsHTML}</ol>
+    </div>
+
+    <div style="background:#FAFAF7;border:1px solid #E4E1D8;border-radius:10px;padding:1.4rem 1.75rem;margin-bottom:1.5rem;">
+      <div style="font-size:11px;font-weight:600;color:#7A2424;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.5rem;">${L.escalateTitle}</div>
+      <p style="color:#4a4843;font-size:0.95rem;line-height:1.6;margin:0;">${L.escalateBody}</p>
+    </div>
+
+    <div style="background:#1B2A4A;color:white;border-radius:10px;padding:1.4rem 1.75rem;margin-bottom:2rem;">
+      <div style="font-size:10px;font-weight:600;color:#C9A84C;text-transform:uppercase;letter-spacing:0.18em;margin-bottom:0.5rem;">${L.futureTitle}</div>
+      <p style="color:#E8E6DF;font-size:0.95rem;line-height:1.55;margin:0;">${L.futureBody}</p>
+    </div>
+
+    <div style="text-align:center;">
+      <button onclick="teamMemberRedirectBack('${modeContext}')" style="background:transparent;color:#1B2A4A;border:1px solid #1B2A4A;padding:0.75rem 1.5rem;border-radius:6px;cursor:pointer;font-size:0.95rem;font-weight:500;letter-spacing:0.05em;">${L.backBtn}</button>
+    </div>
+  `;
+
+  // Hide all other views first
+  document.getElementById('practice-mode').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'none';
+  document.getElementById('fast-mode').style.display = 'none';
+  document.getElementById('step-1').style.display = 'none';
+  document.getElementById('step-2').style.display = 'none';
+
+  if (modeContext === 'practice') {
+    document.getElementById('practice-results-card').innerHTML = warningHTML;
+    document.getElementById('practice-results').style.display = 'block';
+  } else {
+    document.getElementById('results-card').innerHTML = warningHTML;
+    const fastBar = document.getElementById('fast-actions-bar');
+    if (fastBar) fastBar.style.display = 'none';
+    const headerBtns = document.querySelector('#results-view .header-btns');
+    if (headerBtns) headerBtns.style.display = 'none';
+    const resultsHeader = document.querySelector('#results-view .results-header');
+    if (resultsHeader) resultsHeader.style.display = 'none';
+    document.getElementById('results-view').style.display = 'block';
+    document.body.classList.remove('fast-results');
+    document.body.classList.remove('detailed-results');
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function teamMemberRedirectBack(modeContext) {
+  const headerBtns = document.querySelector('#results-view .header-btns');
+  if (headerBtns) headerBtns.style.display = '';
+  const resultsHeader = document.querySelector('#results-view .results-header');
+  if (resultsHeader) resultsHeader.style.display = '';
+  document.getElementById('results-view').style.display = 'none';
+  document.getElementById('practice-results').style.display = 'none';
+
+  if (modeContext === 'practice') {
+    backToPracticeInput();
+  } else if (modeContext === 'fast') {
+    document.getElementById('fast-f-situation').value = '';
+    document.getElementById('f-situation').value = '';
+    switchMode('fast');
+  } else {
+    document.getElementById('f-situation').value = '';
+    document.getElementById('step-2').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+// ===== END TEAM MEMBER PERSPECTIVE DETECTION =====
+
 function showHRRedirect(modeContext) {
   // modeContext: 'practice' | 'fast' | 'detailed'
   const isEs = currentLang === 'es';
@@ -3224,6 +3429,21 @@ async function checkMyWords() {
     return;
   }
   // ===== END HR REDIRECT CHECK =====
+
+  // ===== TEAM MEMBER PERSPECTIVE CHECK =====
+  const tmKeywordTriggered = hasTeamMemberKeyword(fullForCheck);
+  let triggerTM = tmKeywordTriggered;
+  if (!triggerTM) {
+    triggerTM = await isTeamMemberPerspective(message, context);
+  }
+  if (triggerTM) {
+    document.getElementById('loading-view').style.display = 'none';
+    showTeamMemberRedirect('practice');
+    btn.disabled = false;
+    btn.textContent = currentLang === 'es' ? 'Revisar mis palabras' : 'Check my words';
+    return;
+  }
+  // ===== END TEAM MEMBER PERSPECTIVE CHECK =====
 
   // Build the message-type label
   const typeLabels = {
@@ -3827,6 +4047,22 @@ async function generate() {
   }
   // ===== END HR REDIRECT CHECK =====
 
+  // ===== TEAM MEMBER PERSPECTIVE CHECK =====
+  // ValuesAlign is for leaders coaching their teams. If the user is describing a
+  // situation with their own leader, redirect them with light AHORA guidance.
+  const tmKeywordTriggered = hasTeamMemberKeyword(situation);
+  let triggerTM = tmKeywordTriggered;
+  if (!triggerTM) {
+    triggerTM = await isTeamMemberPerspective(situation, '');
+  }
+  if (triggerTM) {
+    document.getElementById('loading-view').style.display = 'none';
+    const ctx = document.body.classList.contains('fast-results') ? 'fast' : 'detailed';
+    showTeamMemberRedirect(ctx);
+    return;
+  }
+  // ===== END TEAM MEMBER PERSPECTIVE CHECK =====
+
   const valuesText = orgValues.map(v => `- ${v.toUpperCase()}`).join('\n');
 
   const sectorForPrompt = selectedSector || 'General';
@@ -3870,6 +4106,10 @@ async function generate() {
 ${sectorGuidance}
 
 You are a trauma-informed leadership coach supporting supervisors. Your role is to help leaders respond to staff behavior with accountability, compassion, and cultural humility.
+
+CRITICAL NAMING RULE: The name of this tool is "ValuesAlign" (one word, capital V and A). Never refer to it as "Values Compass", "Values Align", "ValueAlign", or any other variation. Do not invent alternative names for the tool.
+
+CRITICAL SCOPE RULE: This tool is for LEADERS coaching their team members. The user is always the leader. Never produce a script, doThis, sayThis, or any field whose content is a meta-statement that the tool cannot help (e.g. "This tool cannot generate a script for this situation"). Never insert disclaimers about the tool's purpose into the conversationScript or quickView. If the situation appears to be from a team member's perspective rather than a leader's, that case is handled before you are called, so you should always assume the user is a leader and produce a complete leader-facing response.
 
 Analyze the staff behavior using ONLY these organizational values:
 ${valuesText}
@@ -3979,6 +4219,26 @@ CRITICAL: The "handbookReference" array must be populated with 1-3 policy object
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    // Defensive scrub: in case the model invents an alternate name for the tool,
+    // replace any variant with "ValuesAlign".
+    (function scrubAppName(obj) {
+      if (obj === null || obj === undefined) return;
+      if (typeof obj === 'string') return;
+      if (Array.isArray(obj)) { obj.forEach(scrubAppName); return; }
+      if (typeof obj === 'object') {
+        for (const k in obj) {
+          if (typeof obj[k] === 'string') {
+            obj[k] = obj[k]
+              .replace(/\bValues\s+Compass\b/gi, 'ValuesAlign')
+              .replace(/\bValueCompass\b/gi, 'ValuesAlign')
+              .replace(/\bValues\s+Align\b/g, 'ValuesAlign')
+              .replace(/\bValueAlign\b/gi, 'ValuesAlign');
+          } else {
+            scrubAppName(obj[k]);
+          }
+        }
+      }
+    })(data);
     lastResult = data;
     if (lastResult && lastResult.handbookReference && !Array.isArray(lastResult.handbookReference) && Array.isArray(lastResult.handbookReference.policies)) {
       lastResult.handbookReference = lastResult.handbookReference.policies.map(p => ({
