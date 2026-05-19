@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "echo 'no build needed'",
-    "start": "node server.js"
+    "dev": "node --env-file=.env.local dev-server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
