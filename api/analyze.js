@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const body = parseOr400(analyzeSchema, req.body, res)
   if (!body) return
 
-  const { situation, pattern } = body
+  const { situation, pattern, systemPrompt: clientPrompt } = body
   const orgId = ctx.orgId
   const supa = getServerSupabase()
 
@@ -39,7 +39,14 @@ export default async function handler(req, res) {
     if (data) handbook = data
   }
 
-  const fullPrompt = DEFAULT_ANALYZE_SYSTEM_PROMPT + buildHandbookBlock(handbook)
+  // The frontend builds rich, dynamic prompts (sector, tone, language, impairment
+  // handling, quickView schema). Accept that prompt if provided; fall back to the
+  // server-side default if not. Auth is required upstream so randos can't hit this,
+  // and the Zod schema caps the prompt at 30KB so nobody can stuff a novel.
+  const basePrompt = clientPrompt && clientPrompt.length > 0
+    ? clientPrompt
+    : DEFAULT_ANALYZE_SYSTEM_PROMPT
+  const fullPrompt = basePrompt + buildHandbookBlock(handbook)
 
   // Retry once on JSON parse failure (audit fix B3)
   let parsed = null
