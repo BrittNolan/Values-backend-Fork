@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { ORG_HANDBOOK } from './lifemoves-handbook.js'
+import { ORG_HANDBOOK } from '../lib/handbook.js'
 import { requireAuth } from '../lib/auth.js'
 import { parseOr400, roleplaySchema } from '../lib/validation.js'
 
