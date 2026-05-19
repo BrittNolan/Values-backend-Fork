@@ -1,7 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { ORG_HANDBOOK } from './lifemoves-handbook.js'
+import { requireAuth } from '../lib/auth.js'
+import { parseOr400, roleplaySchema } from '../lib/validation.js'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const ANTHROPIC_TIMEOUT_MS = 45000
+const ROLEPLAY_MODEL = 'claude-opus-4-7'
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  timeout: ANTHROPIC_TIMEOUT_MS
+})
 
 const MODE_PROFILES = {
   defensive: {
@@ -80,11 +88,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { scenario, valuesAnalysis, mode, conversation } = req.body
+  const ctx = await requireAuth(req, res)
+  if (!ctx) return
 
-  if (!scenario || !mode || !MODE_PROFILES[mode]) {
-    return res.status(400).json({ error: 'Missing or invalid scenario/mode' })
-  }
+  const body = parseOr400(roleplaySchema, req.body, res)
+  if (!body) return
+
+  const { scenario, mode, valuesAnalysis, conversation } = body
 
   const systemPrompt = SYSTEM_PROMPT_TEMPLATE(
     mode,
@@ -92,19 +102,14 @@ export default async function handler(req, res) {
     valuesAnalysis || 'No values analysis provided.'
   )
 
-  // Build the message history for Claude
   const messages = []
 
   if (!conversation || conversation.length === 0) {
-    // First call: generate the staff member's opening line
     messages.push({
       role: 'user',
       content: 'Generate the staff member\'s opening message based on the scenario and mode. Return JSON only.'
     })
   } else {
-    // Subsequent calls: pass the conversation as alternating user/assistant
-    // The leader's messages are "user" (since they're talking to the staff member)
-    // The staff member's previous replies are "assistant"
     conversation.forEach(turn => {
       if (turn.role === 'leader') {
         messages.push({ role: 'user', content: turn.text })
@@ -114,21 +119,31 @@ export default async function handler(req, res) {
     })
   }
 
-  try {
-    const message = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages
-    })
+  let parsed = null
+  let lastError = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const message = await client.messages.create({
+        model: ROLEPLAY_MODEL,
+        max_tokens: 1000,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages
+      })
 
-    const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
-
-    return res.status(200).json(parsed)
-  } catch (err) {
-    console.error('Roleplay error:', err)
-    return res.status(500).json({ error: 'Role play failed. Please try again.' })
+      const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
+      const clean = text.replace(/```json|```/g, '').trim()
+      parsed = JSON.parse(clean)
+      break
+    } catch (err) {
+      lastError = err
+      console.warn(`Roleplay attempt ${attempt + 1} failed:`, err.message)
+    }
   }
+
+  if (!parsed) {
+    console.error('Roleplay failed after retry:', lastError)
+    return res.status(502).json({ error: 'Role play response was malformed. Please try again.', retryable: true })
+  }
+
+  return res.status(200).json(parsed)
 }
