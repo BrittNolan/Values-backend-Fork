@@ -90,8 +90,8 @@
 
   async function boot() {
     try {
-      // Step 1: load the Supabase Auth client (served by /api/supabase-browser.js)
-      const mod = await import('/api/supabase-browser.js');
+      // Step 1: load the Supabase Auth client (served by /api/supabase-browser)
+      const mod = await import('/api/supabase-browser');
       sb = mod.supabase;
 
       // Step 2: Replace the original access-code login overlay with our org login.

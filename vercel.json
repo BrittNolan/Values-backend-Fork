@@ -6,6 +6,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/supabase-browser.js", "destination": "/api/supabase-browser" },
     { "source": "/((?!api/|admin\\.html).*)", "destination": "/index.html" }
   ]
 }
