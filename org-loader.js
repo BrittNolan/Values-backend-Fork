@@ -174,7 +174,7 @@
             <circle cx="40" cy="40" r="4" fill="#C9A84C"/>
           </svg>
         </div>
-        <div class="overlay-title">Values<em> Lab</em></div>
+        <div class="overlay-title">Values<em> Align App</em></div>
         <div class="overlay-sub">Organization sign in</div>
 
         <div class="login-field">
