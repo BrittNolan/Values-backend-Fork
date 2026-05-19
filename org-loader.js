@@ -115,6 +115,9 @@
       }
       if (!resumed) showOrgLogin();
 
+      // Auth state is decided — reveal the page (login overlay or signed-in app).
+      document.documentElement.classList.remove('auth-pending');
+
       // Step 4: Keep accessToken fresh on token refresh / sign-out
       sb.auth.onAuthStateChange((event, session) => {
         if (session) {
@@ -134,6 +137,7 @@
       installVerbatimBehaviorPatch();
     } catch (e) {
       console.error('Org loader failed to initialize:', e);
+      document.documentElement.classList.remove('auth-pending');
     }
   }
 
@@ -166,13 +170,7 @@
     orig.innerHTML = `
       <div class="overlay-card" id="org-login-card">
         <div class="overlay-mark">
-          <svg width="56" height="56" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="80" height="80" rx="16" fill="#1B2A4A"/>
-            <rect x="12" y="12" width="56" height="56" stroke="#F7F5EF" stroke-width="1" fill="none" opacity="0.5"/>
-            <rect x="31" y="12.5" width="18.33" height="55" fill="#C9A84C" opacity="0.18"/>
-            <line x1="21" y1="21" x2="59" y2="59" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="40" cy="40" r="4" fill="#C9A84C"/>
-          </svg>
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E" alt="Values Align App" width="56" height="56" style="display:block;border-radius:12px;" />
         </div>
         <div class="overlay-title">Values<em> Align App</em></div>
         <div class="overlay-sub">Organization sign in</div>

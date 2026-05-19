@@ -1,9 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Values Align App — Karabed Leadership Group</title>
+<style>
+  /* Hides protected content until org-loader.js confirms auth state.
+     Prevents a flash of the app behind the login overlay on hard refresh. */
+  html.auth-pending body > *:not(#login-overlay):not(#splash-overlay) { visibility: hidden !important; }
+  html.auth-pending body { background: #1B2A4A; }
+</style>
+<script>
+  /* Safety net: if org-loader.js fails to load (network error, blocked, etc.),
+     reveal the page after 4s so the user isn't stuck on a blank navy screen. */
+  setTimeout(function () { document.documentElement.classList.remove('auth-pending'); }, 4000);
+</script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
