@@ -94,11 +94,14 @@
       const mod = await import('/api/supabase-browser');
       sb = mod.supabase;
 
-      // Step 2: Replace the original access-code login overlay with our org login.
-      installOrgLogin();
+      // Step 2: Build the org login overlay but keep it hidden until we know
+      // whether the user already has a session. This avoids a brief flash of
+      // the sign-in screen on every page load for already-authenticated users.
+      installOrgLogin({ visible: false });
 
       // Step 3: Resume Supabase Auth session if it exists.
       const { data: { session } } = await sb.auth.getSession();
+      let resumed = false;
       if (session) {
         accessToken = session.access_token;
         currentUser = session.user;
@@ -107,8 +110,10 @@
           currentOrg = me.org;
           applyOrgToPage(currentOrg);
           hideOrgLogin();
+          resumed = true;
         }
       }
+      if (!resumed) showOrgLogin();
 
       // Step 4: Keep accessToken fresh on token refresh / sign-out
       sb.auth.onAuthStateChange((event, session) => {
@@ -149,7 +154,8 @@
   // -----------------------------------------------------------
   // Login UI: replace the original access-code login
   // -----------------------------------------------------------
-  function installOrgLogin() {
+  function installOrgLogin(opts) {
+    const visible = !opts || opts.visible !== false;
     // Find the original login overlay (the one asking for an access code)
     const orig = document.getElementById('login-overlay');
     if (!orig) return;
@@ -194,9 +200,9 @@
       </div>
     `;
 
-    // Make sure the overlay is visible (the original code might have hidden
-    // it if a previous session set the old vl_authed flag — we ignore that)
-    orig.style.display = 'flex';
+    // Show or hide based on the caller's intent. We default to hidden during
+    // boot and only flip to visible after the session check confirms no user.
+    orig.style.display = visible ? 'flex' : 'none';
 
     // Wire up the buttons and Enter key
     const btn = document.getElementById('org-login-btn');
@@ -215,6 +221,11 @@
   function hideOrgLogin() {
     const orig = document.getElementById('login-overlay');
     if (orig) orig.style.display = 'none';
+  }
+
+  function showOrgLogin() {
+    const orig = document.getElementById('login-overlay');
+    if (orig) orig.style.display = 'flex';
   }
 
   async function attemptOrgLogin() {
@@ -668,6 +679,11 @@
     try { if (sb) await sb.auth.signOut(); } catch (e) { /* ignore */ }
     sessionStorage.removeItem(SS_ORG);
     localStorage.removeItem(LS_VALUES);
+    // Clear per-session form choices so the next sign-in lands on a fresh
+    // app state instead of resuming wherever the previous user left off.
+    // We deliberately keep language + text-size as user-level preferences.
+    localStorage.removeItem(LS_SECTOR);
+    localStorage.removeItem(LS_TONE);
     location.reload();
   }
 

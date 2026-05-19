@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Values Align App — Karabed Leadership Group</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2196,7 +2197,9 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
 <body>
 
 <!-- ==================== LOGIN OVERLAY ==================== -->
-<div class="overlay" id="login-overlay">
+<!-- Hidden by default so already-signed-in users don't see a flash on load.
+     org-loader.js shows this only after confirming there is no active session. -->
+<div class="overlay" id="login-overlay" style="display:none">
   <div class="overlay-card">
     <button onclick="toggleLanguage()" id="lang-btn-login" class="overlay-lang">Español</button>
     <div class="overlay-mark">
@@ -2224,7 +2227,9 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
 </div>
 
 <!-- ==================== SPLASH OVERLAY ==================== -->
-<div class="overlay" id="splash-overlay">
+<!-- Hidden by default so users returning to the app (e.g. via "Back to App"
+     from admin) don't see a brief flash of this card before JS hides it. -->
+<div class="overlay" id="splash-overlay" style="display:none">
   <div class="overlay-card">
     <button onclick="toggleLanguage()" id="lang-btn-splash" class="overlay-lang">Español</button>
     <div class="overlay-mark">
@@ -2820,8 +2825,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.key === 'Enter') { e.preventDefault(); attemptLogin(); }
     });
   }
-  if (sessionStorage.getItem('vl_agreed') === '1') {
-    document.getElementById('splash-overlay').style.display = 'none';
+  if (sessionStorage.getItem('vl_agreed') !== '1') {
+    document.getElementById('splash-overlay').style.display = 'flex';
   }
   const agreeCheck = document.getElementById('agree-check');
   if (agreeCheck) {

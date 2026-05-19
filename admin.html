@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Values Lab — Admin Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -18,12 +19,22 @@
   --red: #8b2020; --red-bg: #fdf0f0; --red-border: #e07070;
   --r: 8px; --rl: 16px;
 }
-body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--text); min-height: 100vh; }
+
+/* ── INITIAL SPLASH (prevents login-form flash before auth check) ── */
+.boot-splash {
+  position: fixed; inset: 0; background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.boot-splash .spinner { border-color: rgba(255,255,255,0.15); border-top-color: var(--gold); }
+body.booted { background: var(--bg); }
+body.booted .boot-splash { display: none; }
 
 /* ── LOGIN ── */
 .login-wrap {
+  display: none;
   min-height: 100vh;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -192,6 +203,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </head>
 <body>
 
+<!-- INITIAL SPLASH (hides login flash while we check for an existing session) -->
+<div class="boot-splash" id="boot-splash"><div class="spinner"></div></div>
+
 <!-- LOGIN -->
 <div class="login-wrap" id="login-view">
   <div class="login-logo">
@@ -242,6 +256,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     </div>
     <div class="dash-header-right">
       <span style="font-size:11px;color:rgba(255,255,255,0.3);">Organization Dashboard</span>
+      <a class="btn-logout" href="/" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        Back to app
+      </a>
       <button class="btn-logout" onclick="doLogout()">Sign out</button>
     </div>
   </div>
@@ -331,6 +349,28 @@ let accessToken = null;
 let allSessions = [];
 let donutChart = null;
 
+async function routeInitialView() {
+  let authed = false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      accessToken = session.access_token;
+      currentUser = session.user;
+      const r = await fetch('/api/me', { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (r.ok) {
+        const { org } = await r.json();
+        currentOrg = org;
+        showDashboard();
+        authed = true;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  if (!authed) {
+    document.getElementById('login-view').style.display = 'flex';
+  }
+  document.body.classList.add('booted');
+}
+
 // Tiny HTML escape helper used wherever we render session content (audit fix A5)
 function escapeHtml(s) {
   if (s == null) return '';
@@ -353,19 +393,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Enter") document.getElementById("login-password").focus();
   });
 
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    accessToken = session.access_token;
-    currentUser = session.user;
-    try {
-      const r = await fetch('/api/me', { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (r.ok) {
-        const { org } = await r.json();
-        currentOrg = org;
-        showDashboard();
-      }
-    } catch (e) { /* ignore */ }
-  }
+  await routeInitialView();
+
+  // bfcache restore (e.g. Back button from main app): re-route so we don't
+  // show a stale state or flash the wrong view.
+  window.addEventListener('pageshow', async (ev) => {
+    if (!ev.persisted) return;
+    document.body.classList.remove('booted');
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('dash-view').style.display = 'none';
+    await routeInitialView();
+  });
 
   // Keep tokens fresh
   sb.auth.onAuthStateChange((event, sess) => {
