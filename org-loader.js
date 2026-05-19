@@ -170,7 +170,7 @@
     orig.innerHTML = `
       <div class="overlay-card" id="org-login-card">
         <div class="overlay-mark">
-          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E" alt="Values Align App" width="56" height="56" style="display:block;border-radius:12px;" />
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E" alt="Values Align App" width="56" height="56" style="display:block;margin:0 auto;border-radius:12px;" />
         </div>
         <div class="overlay-title">Values<em> Align App</em></div>
         <div class="overlay-sub">Organization sign in</div>
