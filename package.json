@@ -1,13 +1,19 @@
 {
-  "name": "vblrt",
-  "version": "1.0.0",
+  "name": "values-align",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "build": "echo 'no build needed'",
     "start": "node server.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.0",
-    "@supabase/supabase-js": "^2.39.0"
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@supabase/supabase-js": "^2.106.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.0.0"
   }
 }

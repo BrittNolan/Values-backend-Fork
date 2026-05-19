@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Local environment - NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
+# Local engagement notes
+secrets.local.md
+.notes.local/
+
+# Internal Axle Operations Systems working docs — never commit to client repo
+docs/
+
+# Vercel
+.vercel
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Load test outputs
+load-test-results/
+*.k6-report.json
+
+.vercel

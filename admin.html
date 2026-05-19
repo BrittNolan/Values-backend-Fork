@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Values Lab — Admin Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -213,7 +212,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   </div>
   <div class="login-card">
     <div class="login-title">Organization sign in</div>
-    <div class="field-label">Username</div>
+    <div class="field-label">Username or email</div>
     <input type="text" class="login-input" id="login-username" placeholder="e.g. lifemoves" autocomplete="username" />
     <div class="field-label">Password</div>
     <input type="password" class="login-input" id="login-password" placeholder="••••••••" autocomplete="current-password" />
@@ -324,45 +323,84 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   </div>
 </div>
 
-<script>
+<script type="module">
 let sb = null;
 let currentOrg = null;
+let currentUser = null;
+let accessToken = null;
 let allSessions = [];
 let donutChart = null;
 
+// Tiny HTML escape helper used wherever we render session content (audit fix A5)
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const res = await fetch("/api/config");
-  const { supabaseUrl, supabaseKey } = await res.json();
-  sb = supabase.createClient(supabaseUrl, supabaseKey);
+  const mod = await import('/api/supabase-browser.js');
+  sb = mod.supabase;
+
   document.getElementById("login-password").addEventListener("keydown", e => {
     if (e.key === "Enter") doLogin();
   });
   document.getElementById("login-username").addEventListener("keydown", e => {
     if (e.key === "Enter") document.getElementById("login-password").focus();
   });
-  const saved = sessionStorage.getItem("vl_org");
-  if (saved) { currentOrg = JSON.parse(saved); showDashboard(); }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    accessToken = session.access_token;
+    currentUser = session.user;
+    try {
+      const r = await fetch('/api/me', { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (r.ok) {
+        const { org } = await r.json();
+        currentOrg = org;
+        showDashboard();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Keep tokens fresh
+  sb.auth.onAuthStateChange((event, sess) => {
+    if (sess) {
+      accessToken = sess.access_token;
+      currentUser = sess.user;
+    } else {
+      accessToken = null;
+      currentUser = null;
+      currentOrg = null;
+    }
+  });
 });
 
 async function doLogin() {
-  const username = document.getElementById('login-username').value.trim().toLowerCase();
+  const identifier = document.getElementById('login-username').value.trim().toLowerCase();
   const password = document.getElementById('login-password').value.trim();
   const btn = document.getElementById('login-btn');
   const err = document.getElementById('login-err');
   err.style.display = 'none';
-  if (!username || !password) { showErr('Please enter your username and password.'); return; }
+  if (!identifier || !password) { showErr('Please enter your username (or email) and password.'); return; }
   btn.disabled = true;
   btn.textContent = 'Signing in...';
   try {
-    const { data, error } = await sb
-      .from('orgs')
-      .select('id, name, username')
-      .eq('username', username)
-      .eq('password', password)
-      .single();
-    if (error || !data) { showErr('Incorrect username or password. Please try again.'); return; }
-    currentOrg = data;
-    sessionStorage.setItem('vl_org', JSON.stringify(data));
+    const email = identifier.includes('@')
+      ? identifier
+      : `${identifier}+placeholder@valuesalign.app`;
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showErr('Incorrect username or password. Please try again.'); return; }
+    accessToken = data.session.access_token;
+    currentUser = data.user;
+    const r = await fetch('/api/me', { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok) { showErr('Could not load organization.'); return; }
+    const { org } = await r.json();
+    currentOrg = org;
     showDashboard();
   } catch (e) {
     showErr('Connection error. Please try again.');
@@ -372,15 +410,23 @@ async function doLogin() {
   }
 }
 
+// Expose for inline onclick handlers in the existing HTML
+window.doLogin = doLogin;
+window.filterSessions = (type, btn) => filterSessions(type, btn);
+window.doLogout = doLogout;
+
 function showErr(msg) {
   const err = document.getElementById('login-err');
   err.textContent = msg;
   err.style.display = 'block';
 }
 
-function doLogout() {
+async function doLogout() {
+  try { if (sb) await sb.auth.signOut(); } catch (e) { /* ignore */ }
   sessionStorage.removeItem('vl_org');
   currentOrg = null;
+  currentUser = null;
+  accessToken = null;
   allSessions = [];
   document.getElementById('login-view').style.display = 'flex';
   document.getElementById('dash-view').style.display = 'none';
@@ -397,25 +443,32 @@ async function showDashboard() {
 }
 
 async function loadSessions() {
-  const { data, error } = await sb
-    .from('sessions')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
+  if (!currentOrg || !accessToken) return;
+  try {
+    const r = await fetch('/api/admin/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    if (!r.ok) {
+      document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error loading sessions. Please refresh.</div>';
+      return;
+    }
+    const { sessions } = await r.json();
+    allSessions = sessions || [];
+    renderMetrics();
+    renderValuesChart();
+    renderDonut();
+    renderSessions('all');
+    const note = allSessions.length > 0
+      ? `${allSessions.length} session${allSessions.length !== 1 ? 's' : ''} recorded`
+      : 'No sessions yet';
+    document.getElementById('dash-footer-note').textContent = note;
+  } catch (e) {
     document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error loading sessions. Please refresh.</div>';
-    return;
   }
-
-  allSessions = data || [];
-  renderMetrics();
-  renderValuesChart();
-  renderDonut();
-  renderSessions('all');
-  const note = allSessions.length > 0
-    ? `${allSessions.length} session${allSessions.length !== 1 ? 's' : ''} recorded`
-    : 'No sessions yet';
-  document.getElementById('dash-footer-note').textContent = note;
 }
 
 function renderMetrics() {
@@ -464,7 +517,7 @@ function renderValuesChart() {
   const max = sorted[0][1];
   wrap.innerHTML = '<div class="values-list">' + sorted.map(([name, count]) => `
     <div class="val-row">
-      <div class="val-name">${name}</div>
+      <div class="val-name">${escapeHtml(name)}</div>
       <div class="val-bar-bg"><div class="val-bar" style="width:${Math.round(count/max*100)}%"></div></div>
       <div class="val-count">${count}</div>
     </div>`).join('') + '</div>';
@@ -517,17 +570,17 @@ function renderSessions(filter) {
     const date = new Date(s.created_at);
     const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const action = (s.recommended_action || '').toLowerCase();
-    const tags = (s.misaligned_values || []).map(v => `<span class="tag">${v}</span>`).join('');
+    const tags = (s.misaligned_values || []).map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('');
     const behavior = s.behavior || (s.result_json?.behaviorObserved) || 'Session recorded';
     const truncated = behavior.length > 120 ? behavior.slice(0,117) + '...' : behavior;
     return `
       <div class="session-row">
-        <div class="session-date">${label}</div>
+        <div class="session-date">${escapeHtml(label)}</div>
         <div class="session-body">
-          <div class="session-text">${truncated}</div>
+          <div class="session-text">${escapeHtml(truncated)}</div>
           <div class="session-tags">${tags}</div>
         </div>
-        <div class="session-action"><span class="chip ${action}">${s.recommended_action || '—'}</span></div>
+        <div class="session-action"><span class="chip ${escapeHtml(action)}">${escapeHtml(s.recommended_action || '—')}</span></div>
       </div>`;
   }).join('');
 }

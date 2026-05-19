@@ -40,22 +40,19 @@
   // -----------------------------------------------------------
   // Configuration
   // -----------------------------------------------------------
-  // We get the Supabase credentials from the same /api/config
-  // endpoint that admin.html uses, so there's nothing new to set up
-  // on the backend.
-  const CONFIG_ENDPOINT = '/api/config';
+  // Auth is via Supabase Auth, served at /api/supabase-browser.js.
+  // Org info comes from /api/me (gated by the JWT).
 
-  // Session storage keys (cleared when browser closes)
-  const SS_ORG = 'vl_org_v2';
+  const SS_ORG = 'vl_org_v3';
 
-  // Local storage keys used by the existing index.html for values.
-  // We will overwrite these with the org's values on login.
   const LS_VALUES = 'vl_savedValues';
   const LS_SECTOR = 'vl_savedSector';
   const LS_TONE = 'vl_savedTone';
 
-  let sb = null;          // Supabase client
-  let currentOrg = null;  // The signed-in org (object with id, name, values, logo, colors)
+  let sb = null;             // Supabase Auth client
+  let currentOrg = null;     // The signed-in org (id, name, values, branding)
+  let currentUser = null;    // The Supabase Auth user
+  let accessToken = null;    // The JWT from the current session
 
   // ===== Language helpers =====
   // Read the current language (en or es) from the same place index.html stores it.
@@ -93,43 +90,59 @@
 
   async function boot() {
     try {
-      // Step 1: Get Supabase credentials from the existing endpoint
-      const res = await fetch(CONFIG_ENDPOINT);
-      const cfg = await res.json();
-      sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+      // Step 1: load the Supabase Auth client (served by /api/supabase-browser.js)
+      const mod = await import('/api/supabase-browser.js');
+      sb = mod.supabase;
 
-      // Step 2: Replace the original access-code login with our org login.
-      // We always do this regardless of whether someone is already signed in,
-      // because it's safer to always use the new login UI.
+      // Step 2: Replace the original access-code login overlay with our org login.
       installOrgLogin();
 
-      // Step 3: If the user is already signed in (from a previous visit
-      // in the same browser session), restore that org and skip login.
-      const saved = sessionStorage.getItem(SS_ORG);
-      if (saved) {
-        try {
-          currentOrg = JSON.parse(saved);
+      // Step 3: Resume Supabase Auth session if it exists.
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        accessToken = session.access_token;
+        currentUser = session.user;
+        const me = await fetchMe();
+        if (me) {
+          currentOrg = me.org;
           applyOrgToPage(currentOrg);
           hideOrgLogin();
-        } catch (e) {
-          // If the saved org is corrupted, just clear it and show login
-          sessionStorage.removeItem(SS_ORG);
         }
       }
 
-      // Step 4: Hook into the existing generate function so that each
-      // session is saved to Supabase with the correct org_id.
+      // Step 4: Keep accessToken fresh on token refresh / sign-out
+      sb.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          accessToken = session.access_token;
+          currentUser = session.user;
+        } else {
+          accessToken = null;
+          currentUser = null;
+          currentOrg = null;
+        }
+      });
+
+      // Step 5: Inject org_id + Authorization on every /api/* call
       installSessionLogger();
 
-      // Step 5: Patch the rendered results so the "Behavior Observed"
-      // shown in Detailed view is the user's verbatim text rather than
-      // the AI's restatement (which can drift and add details the user
-      // never wrote).
+      // Step 6: Patch the verbatim "Behavior Observed" display
       installVerbatimBehaviorPatch();
     } catch (e) {
       console.error('Org loader failed to initialize:', e);
-      // If we can't load Supabase config, fall back to the original
-      // behavior so the app still works (just without org branding).
+    }
+  }
+
+  async function fetchMe() {
+    if (!accessToken) return null;
+    try {
+      const res = await fetch('/api/me', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.warn('fetchMe failed:', e);
+      return null;
     }
   }
 
@@ -159,7 +172,7 @@
         <div class="overlay-sub">Organization sign in</div>
 
         <div class="login-field">
-          <label for="org-login-username">Username</label>
+          <label for="org-login-username">Username or email</label>
           <input type="text" class="values-input" id="org-login-username"
                  placeholder="e.g. lifemoves" autocomplete="username" />
         </div>
@@ -205,15 +218,15 @@
   }
 
   async function attemptOrgLogin() {
-    const username = (document.getElementById('org-login-username').value || '').trim().toLowerCase();
+    const identifier = (document.getElementById('org-login-username').value || '').trim().toLowerCase();
     const password = (document.getElementById('org-login-password').value || '').trim();
     const errEl = document.getElementById('org-login-error');
     const btn = document.getElementById('org-login-btn');
 
     errEl.style.display = 'none';
 
-    if (!username || !password) {
-      showLoginError('Please enter both username and password.');
+    if (!identifier || !password) {
+      showLoginError('Please enter your username (or email) and password.');
       return;
     }
 
@@ -221,25 +234,29 @@
     btn.textContent = 'Signing in...';
 
     try {
-      // Look up the org by username + password.
-      // We select all the columns we need to customize the page.
-      const { data, error } = await sb
-        .from('orgs')
-        .select('id, name, username, values, logo_url, primary_color, accent_color')
-        .eq('username', username)
-        .eq('password', password)
-        .single();
-
-      if (error || !data) {
+      // Accept either a username (e.g. "demo") or a full email
+      // (e.g. "demo+placeholder@valuesalign.app"). If it has "@", treat
+      // it as an email; otherwise build the placeholder email.
+      const email = identifier.includes('@')
+        ? identifier
+        : `${identifier}+placeholder@valuesalign.app`;
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
         showLoginError('Incorrect username or password. Please try again.');
         return;
       }
 
-      currentOrg = data;
-      sessionStorage.setItem(SS_ORG, JSON.stringify(data));
-      applyOrgToPage(data);
-      hideOrgLogin();
+      accessToken = data.session.access_token;
+      currentUser = data.user;
 
+      const me = await fetchMe();
+      if (!me) {
+        showLoginError('Could not load organization. Please try again.');
+        return;
+      }
+      currentOrg = me.org;
+      applyOrgToPage(currentOrg);
+      hideOrgLogin();
     } catch (e) {
       console.error('Login error:', e);
       showLoginError('Connection error. Please try again.');
@@ -647,9 +664,9 @@
     });
   }
 
-  function signOut() {
+  async function signOut() {
+    try { if (sb) await sb.auth.signOut(); } catch (e) { /* ignore */ }
     sessionStorage.removeItem(SS_ORG);
-    // Also clear the values cache so the next user doesn't see the prior org's values
     localStorage.removeItem(LS_VALUES);
     location.reload();
   }
@@ -658,67 +675,29 @@
   // Session logging: tag each session with the org_id
   // -----------------------------------------------------------
   function installSessionLogger() {
-    // The original index.html POSTs to /api/analyze and gets back
-    // a result object. To save sessions to Supabase tagged with the
-    // org_id, we wrap the global fetch so that when /api/analyze
-    // returns successfully, we also write a row to the sessions table.
-   const originalFetch = window.fetch;
+    // Wrap window.fetch to attach the JWT on every /api/* call.
+    // Session writes are now server-side (in /api/analyze), so we no longer
+    // write from the client.
+    const originalFetch = window.fetch;
     window.fetch = async function (input, init) {
-      // Inject org_id into /api/analyze requests so the backend can look up the right handbook
       try {
         const url = typeof input === 'string' ? input : (input && input.url) || '';
-        if (url.includes('/api/analyze') && currentOrg && init && init.body) {
-          const body = JSON.parse(init.body);
-          if (!body.orgId) {
-            body.orgId = currentOrg.id;
-            init.body = JSON.stringify(body);
+        if (url.startsWith('/api/') && accessToken) {
+          init = init || {};
+          init.headers = init.headers || {};
+          // Don't clobber an existing Authorization header
+          const hasAuth = init.headers.Authorization || init.headers.authorization
+            || (init.headers instanceof Headers && init.headers.get('Authorization'));
+          if (!hasAuth) {
+            if (init.headers instanceof Headers) {
+              init.headers.set('Authorization', `Bearer ${accessToken}`);
+            } else {
+              init.headers = { ...init.headers, Authorization: `Bearer ${accessToken}` };
+            }
           }
         }
-      } catch (e) { /* ignore - request will proceed without org_id */ }
-
-      const response = await originalFetch.apply(this, arguments);
-      try {
-        const url = typeof input === 'string' ? input : (input && input.url) || '';
-        if (url.includes('/api/analyze') && response.ok && currentOrg && sb) {
-          // Clone the response so we can read it without consuming it
-          // for the original caller.
-          const cloned = response.clone();
-          const data = await cloned.json();
-          // Pull the situation text out of the request body
-          let behavior = '';
-          let pattern = '';
-          try {
-            if (init && init.body) {
-              const body = JSON.parse(init.body);
-              behavior = body.situation || '';
-              pattern = body.pattern || '';
-            }
-          } catch (e) { /* ignore */ }
-
-          const misaligned = (data.valuesAnalysis || [])
-            .filter(function (v) { return v.status === 'Misaligned'; })
-            .map(function (v) { return v.value; });
-          const upheld = (data.valuesAnalysis || [])
-            .filter(function (v) { return v.status === 'Upheld'; })
-            .map(function (v) { return v.value; });
-
-          // Fire and forget — we don't want to block the UI
-          sb.from('sessions').insert({
-            org_id: currentOrg.id,
-            behavior: behavior,
-            pattern: pattern,
-            misaligned_values: misaligned,
-            upheld_values: upheld,
-            recommended_action: data.recommendedAction ? data.recommendedAction.action : null,
-            result_json: data
-          }).then(function (res) {
-            if (res.error) console.warn('Session log failed:', res.error);
-          });
-        }
-      } catch (e) {
-        console.warn('Session logger error:', e);
-      }
-      return response;
+      } catch (e) { /* ignore */ }
+      return originalFetch.apply(this, arguments);
     };
   }
 
