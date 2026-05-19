@@ -172,7 +172,7 @@
         <div class="overlay-sub">Organization sign in</div>
 
         <div class="login-field">
-          <label for="org-login-username">Username</label>
+          <label for="org-login-username">Username or email</label>
           <input type="text" class="values-input" id="org-login-username"
                  placeholder="e.g. lifemoves" autocomplete="username" />
         </div>
@@ -218,15 +218,15 @@
   }
 
   async function attemptOrgLogin() {
-    const username = (document.getElementById('org-login-username').value || '').trim().toLowerCase();
+    const identifier = (document.getElementById('org-login-username').value || '').trim().toLowerCase();
     const password = (document.getElementById('org-login-password').value || '').trim();
     const errEl = document.getElementById('org-login-error');
     const btn = document.getElementById('org-login-btn');
 
     errEl.style.display = 'none';
 
-    if (!username || !password) {
-      showLoginError('Please enter both username and password.');
+    if (!identifier || !password) {
+      showLoginError('Please enter your username (or email) and password.');
       return;
     }
 
@@ -234,9 +234,12 @@
     btn.textContent = 'Signing in...';
 
     try {
-      // Translate "username" -> email for Supabase Auth.
-      // Convention: <username>+placeholder@valuesalign.app
-      const email = `${username}+placeholder@valuesalign.app`;
+      // Accept either a username (e.g. "demo") or a full email
+      // (e.g. "demo+placeholder@valuesalign.app"). If it has "@", treat
+      // it as an email; otherwise build the placeholder email.
+      const email = identifier.includes('@')
+        ? identifier
+        : `${identifier}+placeholder@valuesalign.app`;
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) {
         showLoginError('Incorrect username or password. Please try again.');

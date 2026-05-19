@@ -212,7 +212,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   </div>
   <div class="login-card">
     <div class="login-title">Organization sign in</div>
-    <div class="field-label">Username</div>
+    <div class="field-label">Username or email</div>
     <input type="text" class="login-input" id="login-username" placeholder="e.g. lifemoves" autocomplete="username" />
     <div class="field-label">Password</div>
     <input type="password" class="login-input" id="login-password" placeholder="••••••••" autocomplete="current-password" />
@@ -381,16 +381,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function doLogin() {
-  const username = document.getElementById('login-username').value.trim().toLowerCase();
+  const identifier = document.getElementById('login-username').value.trim().toLowerCase();
   const password = document.getElementById('login-password').value.trim();
   const btn = document.getElementById('login-btn');
   const err = document.getElementById('login-err');
   err.style.display = 'none';
-  if (!username || !password) { showErr('Please enter your username and password.'); return; }
+  if (!identifier || !password) { showErr('Please enter your username (or email) and password.'); return; }
   btn.disabled = true;
   btn.textContent = 'Signing in...';
   try {
-    const email = `${username}+placeholder@valuesalign.app`;
+    const email = identifier.includes('@')
+      ? identifier
+      : `${identifier}+placeholder@valuesalign.app`;
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) { showErr('Incorrect username or password. Please try again.'); return; }
     accessToken = data.session.access_token;
