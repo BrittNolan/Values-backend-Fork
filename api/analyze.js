@@ -4,13 +4,12 @@ import { parseOr400, analyzeSchema } from '../lib/validation.js'
 import { requireAuth } from '../lib/auth.js'
 import { DEFAULT_ANALYZE_SYSTEM_PROMPT, buildHandbookBlock } from '../lib/system-prompts.js'
 
-// Vercel function ceiling is 60s (see vercel.json). Keep the first attempt under
-// the budget so a JSON-parse retry can still fit; otherwise the function gets
-// terminated mid-flight and the platform returns a plain-text error page, which
-// the client then can't decode as JSON.
-const ANTHROPIC_TIMEOUT_MS = 40000
-const RETRY_TIMEOUT_MS = 15000
-const FUNCTION_BUDGET_MS = 58000
+// Vercel function ceiling is 300s on Pro (see vercel.json). Give Claude generous
+// budget for the first attempt and still leave room for a parse-failure retry,
+// while keeping a hard ceiling so the function can't be killed mid-response.
+const ANTHROPIC_TIMEOUT_MS = 120000
+const RETRY_TIMEOUT_MS = 60000
+const FUNCTION_BUDGET_MS = 290000
 const ANALYZE_MODEL = 'claude-opus-4-7'
 const MAX_TOKENS = 4000
 
