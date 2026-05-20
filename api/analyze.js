@@ -4,7 +4,13 @@ import { parseOr400, analyzeSchema } from '../lib/validation.js'
 import { requireAuth } from '../lib/auth.js'
 import { DEFAULT_ANALYZE_SYSTEM_PROMPT, buildHandbookBlock } from '../lib/system-prompts.js'
 
-const ANTHROPIC_TIMEOUT_MS = 45000
+// Vercel function ceiling is 60s (see vercel.json). Keep the first attempt under
+// the budget so a JSON-parse retry can still fit; otherwise the function gets
+// terminated mid-flight and the platform returns a plain-text error page, which
+// the client then can't decode as JSON.
+const ANTHROPIC_TIMEOUT_MS = 40000
+const RETRY_TIMEOUT_MS = 15000
+const FUNCTION_BUDGET_MS = 58000
 const ANALYZE_MODEL = 'claude-opus-4-7'
 const MAX_TOKENS = 4000
 
@@ -48,10 +54,18 @@ export default async function handler(req, res) {
     : DEFAULT_ANALYZE_SYSTEM_PROMPT
   const fullPrompt = basePrompt + buildHandbookBlock(handbook)
 
-  // Retry once on JSON parse failure (audit fix B3)
+  // Retry once on JSON parse failure (audit fix B3), but only if the function
+  // still has budget — otherwise the retry would push us past Vercel's 60s ceiling
+  // and the platform would kill us mid-response.
+  const startedAt = Date.now()
   let parsed = null
   let lastError = null
   for (let attempt = 0; attempt < 2; attempt++) {
+    const elapsed = Date.now() - startedAt
+    if (attempt === 1 && elapsed > FUNCTION_BUDGET_MS - RETRY_TIMEOUT_MS) {
+      console.warn(`Analyze retry skipped: ${elapsed}ms elapsed, not enough budget left`)
+      break
+    }
     try {
       const userMessage = attempt === 0
         ? `Analyze this situation: ${situation.trim()}`
@@ -63,7 +77,7 @@ export default async function handler(req, res) {
         // Prompt caching saves ~90% on the long stable system prompt
         system: [{ type: 'text', text: fullPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userMessage }]
-      })
+      }, { timeout: attempt === 0 ? ANTHROPIC_TIMEOUT_MS : RETRY_TIMEOUT_MS })
 
       const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
       const clean = text.replace(/```json|```/g, '').trim()
