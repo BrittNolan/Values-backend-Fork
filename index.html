@@ -3761,7 +3761,8 @@ function startRolePlay(mode) {
   .then(response => response.json())
   .then(data => {
     if (data.error) {
-      messagesEl.innerHTML = '<div style="text-align:center; color:#b91c1c; font-size:13px; padding:16px;">Something went wrong: ' + data.error + '</div>';
+      const safe = String(data.error).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      messagesEl.innerHTML = '<div style="text-align:center; color:#b91c1c; font-size:13px; padding:16px;">' + safe + '</div>';
       return;
     }
     // Save and render the staff opener
@@ -3831,7 +3832,7 @@ function sendRolePlayMessage() {
     if (t) t.remove();
 
     if (data.error) {
-      renderRolePlayMessage('error', 'Something went wrong: ' + data.error);
+      renderRolePlayMessage('error', data.error);
     } else {
       // Render coaching first (it's about the leader's last message)
       if (data.coaching) {
