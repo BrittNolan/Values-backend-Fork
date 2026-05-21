@@ -18,6 +18,15 @@ const client = new Anthropic({
   timeout: ANTHROPIC_TIMEOUT_MS
 })
 
+// Anthropic returns billing failures as 400s with "credit balance" in the
+// error body. Detect this so the API can surface a useful message instead of
+// the generic "malformed response" 502 (retrying doesn't help).
+function isCreditBalanceError(err) {
+  if (!err) return false
+  const msg = (err.message || '') + ' ' + JSON.stringify(err.error || {})
+  return /credit balance/i.test(msg)
+}
+
 // Claude sometimes wraps JSON in a preamble ("Here's the analysis:") or markdown
 // fences, even when told not to. Strip what we can, then bracket-count to extract
 // the first balanced JSON object so trailing prose doesn't break us either.
@@ -110,11 +119,20 @@ export default async function handler(req, res) {
       // a snippet of the response text if we got that far.
       const snippet = (err.responseText || '').slice(0, 400)
       console.warn(`Analyze attempt ${attempt + 1} failed [${err.name || 'Error'}]:`, err.message, snippet ? `| body: ${snippet}` : '')
+      // Anthropic billing errors come back as 400 with "credit balance" in the
+      // message. Retrying won't help - bail out fast with a clear message.
+      if (isCreditBalanceError(err)) break
     }
   }
 
   if (!parsed) {
     console.error('Analyze failed after retry:', lastError)
+    if (isCreditBalanceError(lastError)) {
+      return res.status(402).json({
+        error: 'AI service is out of credits. Top up at https://console.anthropic.com/settings/billing and try again.',
+        retryable: false
+      })
+    }
     return res.status(502).json({
       error: 'AI response was malformed. Please try again.',
       retryable: true

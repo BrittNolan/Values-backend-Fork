@@ -11,6 +11,15 @@ const client = new Anthropic({
   timeout: ANTHROPIC_TIMEOUT_MS
 })
 
+// Anthropic returns billing failures as 400s with "credit balance" in the
+// error body. Detect this so the API can surface a useful message instead of
+// the generic "malformed response" 502 (retrying doesn't help).
+function isCreditBalanceError(err) {
+  if (!err) return false
+  const msg = (err.message || '') + ' ' + JSON.stringify(err.error || {})
+  return /credit balance/i.test(msg)
+}
+
 // Same robust JSON extractor analyze.js uses - tolerates preamble, trailing prose,
 // markdown fences. See comment there for details.
 function extractJsonObject(raw) {
@@ -157,12 +166,19 @@ export default async function handler(req, res) {
       break
     } catch (err) {
       lastError = err
-      console.warn(`Roleplay attempt ${attempt + 1} failed:`, err.message)
+      console.warn(`Roleplay attempt ${attempt + 1} failed [${err.name || 'Error'}]:`, err.message)
+      if (isCreditBalanceError(err)) break
     }
   }
 
   if (!parsed) {
     console.error('Roleplay failed after retry:', lastError)
+    if (isCreditBalanceError(lastError)) {
+      return res.status(402).json({
+        error: 'AI service is out of credits. Top up at https://console.anthropic.com/settings/billing and try again.',
+        retryable: false
+      })
+    }
     return res.status(502).json({ error: 'Role play response was malformed. Please try again.', retryable: true })
   }
 
