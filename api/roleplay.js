@@ -145,16 +145,15 @@ export default async function handler(req, res) {
   let lastError = null
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      // Prefill `{` to force Claude to start the response as JSON, then reattach.
       const message = await client.messages.create({
         model: ROLEPLAY_MODEL,
         max_tokens: 1000,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-        messages: [...messages, { role: 'assistant', content: '{' }]
+        messages
       })
 
       const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
-      parsed = extractJsonObject('{' + text)
+      parsed = extractJsonObject(text)
       break
     } catch (err) {
       lastError = err

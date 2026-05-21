@@ -98,21 +98,18 @@ export default async function handler(req, res) {
         max_tokens: MAX_TOKENS,
         // Prompt caching saves ~90% on the long stable system prompt
         system: [{ type: 'text', text: fullPrompt, cache_control: { type: 'ephemeral' } }],
-        // Prefilling the assistant turn with `{` forces Claude to continue from
-        // there, so it can't open with a preamble like "Here's the analysis:".
-        // We reattach the `{` before parsing.
-        messages: [
-          { role: 'user', content: userMessage },
-          { role: 'assistant', content: '{' }
-        ]
+        messages: [{ role: 'user', content: userMessage }]
       }, { timeout: attempt === 0 ? ANTHROPIC_TIMEOUT_MS : RETRY_TIMEOUT_MS })
 
       const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
-      parsed = extractJsonObject('{' + text)
+      parsed = extractJsonObject(text)
       break
     } catch (err) {
       lastError = err
-      console.warn(`Analyze attempt ${attempt + 1} failed:`, err.message)
+      // Log enough to diagnose without flooding logs - error type, message, and
+      // a snippet of the response text if we got that far.
+      const snippet = (err.responseText || '').slice(0, 400)
+      console.warn(`Analyze attempt ${attempt + 1} failed [${err.name || 'Error'}]:`, err.message, snippet ? `| body: ${snippet}` : '')
     }
   }
 
