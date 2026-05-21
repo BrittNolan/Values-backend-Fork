@@ -3063,10 +3063,8 @@ ${fullText}
       body: JSON.stringify({
         situation: fullText,
         pattern: 'hr-check',
-        sector: '',
-        tone: '',
         systemPrompt: checkPrompt,
-        practiceMode: true
+        skipSessionLog: true
       })
     });
     if (!r.ok) return false;
@@ -3145,10 +3143,8 @@ ${fullText}
       body: JSON.stringify({
         situation: fullText,
         pattern: 'tm-check',
-        sector: '',
-        tone: '',
         systemPrompt: checkPrompt,
-        practiceMode: true
+        skipSessionLog: true
       })
     });
     if (!r.ok) return false;
@@ -3567,22 +3563,8 @@ DO NOT include any text outside the JSON. DO NOT use code fences. Just the JSON 
       }
     }
 
-    // Save to sessions table tagged as practice
-    try {
-      const orgRaw = sessionStorage.getItem('vl_org_v2');
-      const orgId = orgRaw ? JSON.parse(orgRaw).id : null;
-      if (orgId && window.supabaseClient) {
-        await window.supabaseClient.from('sessions').insert({
-          org_id: orgId,
-          behavior: '[PRACTICE] ' + message.slice(0, 500),
-          pattern: selectedMessageType,
-          misaligned_values: (parsed.whatToWatch || []).map(w => w.valueAtRisk).filter(Boolean),
-          upheld_values: (parsed.whatsWorking || []).map(w => w.valueAligned).filter(Boolean),
-          recommended_action: parsed.suggestedRewrite || '',
-          result_json: parsed
-        });
-      }
-    } catch (e) { /* silently ignore save errors */ }
+    // Session write is handled server-side by /api/analyze when practiceMode is true.
+    // (Used to be a direct anon-key insert here, but RLS on sessions blocks that.)
 
     document.getElementById('loading-view').style.display = 'none';
     renderPracticeResults(parsed, message);

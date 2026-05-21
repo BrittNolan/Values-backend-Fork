@@ -11,6 +11,28 @@ const client = new Anthropic({
   timeout: ANTHROPIC_TIMEOUT_MS
 })
 
+// Same robust JSON extractor analyze.js uses - tolerates preamble, trailing prose,
+// markdown fences. See comment there for details.
+function extractJsonObject(raw) {
+  const stripped = String(raw).replace(/```(?:json)?\s*|```/g, '').trim()
+  try { return JSON.parse(stripped) } catch {}
+  const start = stripped.indexOf('{')
+  if (start === -1) throw new Error('No JSON object in AI response')
+  let depth = 0, inString = false, escape = false
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i]
+    if (escape) { escape = false; continue }
+    if (ch === '\\') { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') depth++
+    else if (ch === '}' && --depth === 0) {
+      return JSON.parse(stripped.slice(start, i + 1))
+    }
+  }
+  throw new Error('No balanced JSON object in AI response')
+}
+
 const MODE_PROFILES = {
   defensive: {
     posture: "You push back, deflect, minimize, and compare yourself to others. You feel singled out. You are not hostile, but you are protecting yourself. You soften only when the leader earns it through curiosity, acknowledgment, and not rushing.",
@@ -123,16 +145,16 @@ export default async function handler(req, res) {
   let lastError = null
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      // Prefill `{` to force Claude to start the response as JSON, then reattach.
       const message = await client.messages.create({
         model: ROLEPLAY_MODEL,
         max_tokens: 1000,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-        messages
+        messages: [...messages, { role: 'assistant', content: '{' }]
       })
 
       const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
-      const clean = text.replace(/```json|```/g, '').trim()
-      parsed = JSON.parse(clean)
+      parsed = extractJsonObject('{' + text)
       break
     } catch (err) {
       lastError = err

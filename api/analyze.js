@@ -18,6 +18,29 @@ const client = new Anthropic({
   timeout: ANTHROPIC_TIMEOUT_MS
 })
 
+// Claude sometimes wraps JSON in a preamble ("Here's the analysis:") or markdown
+// fences, even when told not to. Strip what we can, then bracket-count to extract
+// the first balanced JSON object so trailing prose doesn't break us either.
+function extractJsonObject(raw) {
+  const stripped = String(raw).replace(/```(?:json)?\s*|```/g, '').trim()
+  try { return JSON.parse(stripped) } catch {}
+  const start = stripped.indexOf('{')
+  if (start === -1) throw new Error('No JSON object in AI response')
+  let depth = 0, inString = false, escape = false
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i]
+    if (escape) { escape = false; continue }
+    if (ch === '\\') { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') depth++
+    else if (ch === '}' && --depth === 0) {
+      return JSON.parse(stripped.slice(start, i + 1))
+    }
+  }
+  throw new Error('No balanced JSON object in AI response')
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -29,7 +52,7 @@ export default async function handler(req, res) {
   const body = parseOr400(analyzeSchema, req.body, res)
   if (!body) return
 
-  const { situation, pattern, systemPrompt: clientPrompt } = body
+  const { situation, pattern, systemPrompt: clientPrompt, practiceMode, skipSessionLog } = body
   const orgId = ctx.orgId
   const supa = getServerSupabase()
 
@@ -75,12 +98,17 @@ export default async function handler(req, res) {
         max_tokens: MAX_TOKENS,
         // Prompt caching saves ~90% on the long stable system prompt
         system: [{ type: 'text', text: fullPrompt, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: userMessage }]
+        // Prefilling the assistant turn with `{` forces Claude to continue from
+        // there, so it can't open with a preamble like "Here's the analysis:".
+        // We reattach the `{` before parsing.
+        messages: [
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: '{' }
+        ]
       }, { timeout: attempt === 0 ? ANTHROPIC_TIMEOUT_MS : RETRY_TIMEOUT_MS })
 
       const text = message.content.map(b => b.type === 'text' ? b.text : '').join('')
-      const clean = text.replace(/```json|```/g, '').trim()
-      parsed = JSON.parse(clean)
+      parsed = extractJsonObject('{' + text)
       break
     } catch (err) {
       lastError = err
@@ -96,26 +124,38 @@ export default async function handler(req, res) {
     })
   }
 
-  // Server-side session write (replaces the previous client-side write)
-  const misaligned = (parsed.valuesAnalysis || [])
-    .filter(v => v.status === 'Misaligned')
-    .map(v => v.value)
-  const upheld = (parsed.valuesAnalysis || [])
-    .filter(v => v.status === 'Upheld')
-    .map(v => v.value)
+  // Silent meta-checks (HR-keyword classifier, team-member-perspective classifier)
+  // ask the model a yes/no routing question and shouldn't pollute the session log.
+  if (!skipSessionLog) {
+    // Fast/Detailed responses carry valuesAnalysis + recommendedAction.
+    // Practice responses carry whatsWorking + whatToWatch + suggestedRewrite,
+    // and the behavior label is prefixed [PRACTICE] so admins can tell them apart.
+    let behavior, misaligned, upheld, recommendedAction
+    if (practiceMode) {
+      behavior = '[PRACTICE] ' + situation.trim().slice(0, 500)
+      misaligned = (parsed.whatToWatch || []).map(w => w.valueAtRisk).filter(Boolean)
+      upheld = (parsed.whatsWorking || []).map(w => w.valueAligned).filter(Boolean)
+      recommendedAction = parsed.suggestedRewrite || null
+    } else {
+      behavior = situation.trim()
+      misaligned = (parsed.valuesAnalysis || []).filter(v => v.status === 'Misaligned').map(v => v.value)
+      upheld = (parsed.valuesAnalysis || []).filter(v => v.status === 'Upheld').map(v => v.value)
+      recommendedAction = parsed.recommendedAction?.action || null
+    }
 
-  const { error: insErr } = await supa.from('sessions').insert({
-    org_id: orgId,
-    behavior: situation.trim(),
-    pattern: pattern || 'first',
-    misaligned_values: misaligned,
-    upheld_values: upheld,
-    recommended_action: parsed.recommendedAction?.action || null,
-    result_json: parsed
-  })
-  if (insErr) {
-    // Don't fail the user - coaching response is already in hand
-    console.warn('Session log write failed:', insErr)
+    const { error: insErr } = await supa.from('sessions').insert({
+      org_id: orgId,
+      behavior,
+      pattern: pattern || 'first',
+      misaligned_values: misaligned,
+      upheld_values: upheld,
+      recommended_action: recommendedAction,
+      result_json: parsed
+    })
+    if (insErr) {
+      // Don't fail the user - coaching response is already in hand
+      console.warn('Session log write failed:', insErr)
+    }
   }
 
   return res.status(200).json(parsed)
