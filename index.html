@@ -3543,11 +3543,17 @@ DO NOT include any text outside the JSON. DO NOT use code fences. Just the JSON 
         practiceMode: true
       })
     });
+    // Parse the body ourselves so we can surface the server's clean error message
+    // (e.g. "AI service is out of credits...") instead of "Server returned 402: {json}".
+    const rawBody = await r.text();
+    let data = null;
+    try { data = rawBody ? JSON.parse(rawBody) : null; } catch (_) { /* non-JSON */ }
     if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`Server returned ${r.status}: ${txt.slice(0,200)}`);
+      const friendly = currentLang === 'es'
+        ? 'Algo salió mal. Por favor, inténtelo de nuevo.'
+        : 'Something went wrong. Please try again.';
+      throw new Error((data && data.error) || friendly);
     }
-    const data = await r.json();
     // The endpoint may return either a parsed object (already JSON) or text.
     let parsed = null;
     if (data && typeof data === 'object' && (data.overallSense || data.whatsWorking)) {
@@ -3571,7 +3577,7 @@ DO NOT include any text outside the JSON. DO NOT use code fences. Just the JSON 
   } catch (e) {
     document.getElementById('loading-view').style.display = 'none';
     document.getElementById('practice-mode').style.display = 'block';
-    errEl.textContent = (currentLang === 'es' ? 'Algo salió mal: ' : 'Something went wrong: ') + e.message;
+    errEl.textContent = e.message;
     errEl.style.display = 'block';
   } finally {
     btn.disabled = false;
