@@ -128,14 +128,27 @@ body.booted .boot-splash { display: none; }
 }
 .card-title { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
 
-/* Values bar chart */
+/* Values + Themes bar lists */
 .values-list { display: flex; flex-direction: column; gap: 10px; }
 .val-row { display: flex; align-items: center; gap: 10px; }
 .val-name { font-size: 13px; color: var(--text2); min-width: 140px; font-weight: 300; flex-shrink: 0; }
 .val-bar-bg { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; }
 .val-bar { height: 8px; border-radius: 4px; background: var(--navy); transition: width 0.6s ease; }
 .val-count { font-size: 12px; font-weight: 500; color: var(--text3); min-width: 20px; text-align: right; }
+.val-count.pct { min-width: 46px; }
 .val-empty { font-size: 13px; color: var(--text3); font-weight: 300; text-align: center; padding: 2rem 0; }
+
+/* Themes */
+.themes-note {
+  font-size: 12px; color: var(--text3); font-weight: 300;
+  margin: -6px 0 18px; line-height: 1.55;
+}
+.themes-list { display: flex; flex-direction: column; gap: 14px; }
+.theme-row { display: flex; align-items: center; gap: 12px; }
+.theme-name { font-size: 13px; color: var(--text2); min-width: 190px; font-weight: 400; flex-shrink: 0; }
+.theme-bar-bg { flex: 1; height: 10px; background: var(--bg); border-radius: 5px; }
+.theme-bar { height: 10px; border-radius: 5px; background: var(--navy); transition: width 0.6s ease; }
+.theme-pct { font-size: 13px; font-weight: 500; color: var(--navy); min-width: 44px; text-align: right; }
 
 /* Donut */
 .donut-section { display: flex; align-items: center; gap: 20px; }
@@ -146,39 +159,6 @@ body.booted .boot-splash { display: none; }
 .donut-legend { display: flex; flex-direction: column; gap: 8px; }
 .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); font-weight: 300; }
 .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-
-/* Session list */
-.filter-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-.filter-btn {
-  font-size: 11px; padding: 5px 14px; border-radius: 999px;
-  border: 1px solid var(--border2); background: transparent;
-  color: var(--text3); cursor: pointer; font-family: 'DM Sans', sans-serif;
-  transition: all 0.12s;
-}
-.filter-btn.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
-
-.sessions-list { display: flex; flex-direction: column; }
-.session-row {
-  display: flex; gap: 14px; padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.1s; cursor: pointer;
-}
-.session-row:last-child { border-bottom: none; }
-.session-row:hover { background: var(--bg); margin: 0 -10px; padding: 14px 10px; border-radius: var(--r); border-bottom: none; }
-.session-date { font-size: 11px; color: var(--text3); min-width: 44px; padding-top: 2px; flex-shrink: 0; font-weight: 300; }
-.session-body { flex: 1; min-width: 0; }
-.session-text { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; font-weight: 300; }
-.session-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag {
-  font-size: 11px; padding: 2px 10px; border-radius: 999px;
-  background: rgba(27,42,74,0.07); color: var(--navy); font-weight: 400;
-}
-.session-action { margin-left: auto; flex-shrink: 0; padding-top: 2px; }
-
-.chip { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 12px; border-radius: var(--r); white-space: nowrap; }
-.chip.coach { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
-.chip.document { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
-.chip.escalate { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 
 .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 13px; font-weight: 300; }
 
@@ -198,6 +178,7 @@ body.booted .boot-splash { display: none; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-cols { grid-template-columns: 1fr; }
   .dash-body { padding: 1.25rem; }
+  .theme-name { min-width: 130px; }
 }
 </style>
 </head>
@@ -320,16 +301,9 @@ body.booted .boot-splash { display: none; }
       </div>
 
       <div class="dash-card">
-        <div class="card-title">Session history</div>
-        <div class="filter-bar">
-          <button class="filter-btn active" onclick="filterSessions('all',this)">All</button>
-          <button class="filter-btn" onclick="filterSessions('Coach',this)">Coach</button>
-          <button class="filter-btn" onclick="filterSessions('Document',this)">Document</button>
-          <button class="filter-btn" onclick="filterSessions('Escalate',this)">Escalate</button>
-        </div>
-        <div class="sessions-list" id="sessions-list">
-          <div class="empty-state">Loading sessions...</div>
-        </div>
+        <div class="card-title">Situation themes</div>
+        <p class="themes-note">Aggregated patterns across all sessions. Individual situations are private and never shown.</p>
+        <div id="themes-wrap"><div class="val-empty">Loading...</div></div>
       </div>
     </div>
 
@@ -371,7 +345,7 @@ async function routeInitialView() {
   document.body.classList.add('booted');
 }
 
-// Tiny HTML escape helper used wherever we render session content (audit fix A5)
+// Tiny HTML escape helper used wherever we render aggregated content
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s)
@@ -450,7 +424,6 @@ async function doLogin() {
 
 // Expose for inline onclick handlers in the existing HTML
 window.doLogin = doLogin;
-window.filterSessions = (type, btn) => filterSessions(type, btn);
 window.doLogout = doLogout;
 
 function showErr(msg) {
@@ -491,7 +464,7 @@ async function loadSessions() {
       }
     });
     if (!r.ok) {
-      document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error loading sessions. Please refresh.</div>';
+      document.getElementById('themes-wrap').innerHTML = '<div class="val-empty">Error loading data. Please refresh.</div>';
       return;
     }
     const { sessions } = await r.json();
@@ -499,13 +472,13 @@ async function loadSessions() {
     renderMetrics();
     renderValuesChart();
     renderDonut();
-    renderSessions('all');
+    renderThemes();
     const note = allSessions.length > 0
       ? `${allSessions.length} session${allSessions.length !== 1 ? 's' : ''} recorded`
       : 'No sessions yet';
     document.getElementById('dash-footer-note').textContent = note;
   } catch (e) {
-    document.getElementById('sessions-list').innerHTML = '<div class="empty-state">Error loading sessions. Please refresh.</div>';
+    document.getElementById('themes-wrap').innerHTML = '<div class="val-empty">Error loading data. Please refresh.</div>';
   }
 }
 
@@ -593,40 +566,73 @@ function renderDonut() {
   });
 }
 
-function renderSessions(filter) {
-  const list = document.getElementById('sessions-list');
-  const filtered = filter === 'all'
-    ? allSessions
-    : allSessions.filter(s => s.recommended_action === filter);
+/* ─────────────────────────────────────────────────────────────
+   SITUATION THEMES
+   Each session is sorted into ONE broad theme. The raw situation
+   text is read only to classify and is never rendered to the DOM.
+   A session's stored theme/category field is used first if present;
+   otherwise the text is keyword-matched into a generic theme.
+   ───────────────────────────────────────────────────────────── */
+const THEME_DEFS = [
+  { name: 'Communication & tone',        keywords: ['tone','rude','disrespect','yell','shout','snap','dismiss','interrupt','attitude','comment','verbal','spoke','said','argued','raised'] },
+  { name: 'Attendance & reliability',    keywords: ['late','tardy','absent','no-show','no show','no call','missed shift','missed a shift','leaving early','left early','schedule','punctual','call out','called out'] },
+  { name: 'Procedure & policy',          keywords: ['procedure','protocol','policy','rule','documentation','paperwork','log','process','guideline','compliance','sign off','signed','intake','report'] },
+  { name: 'Teamwork & collaboration',    keywords: ['team','coworker','co-worker','colleague','peer','collaborat','gossip','cliqu','exclude','refused to help','conflict with','blame'] },
+  { name: 'Client & resident care',      keywords: ['client','resident','participant','guest','family','customer','care','served','household'] },
+  { name: 'Accountability & follow-through', keywords: ['follow through','follow-up','follow up','incomplete','did not finish','didn\'t finish','task','responsib','deadline','forgot','neglect','dropped','unfinished'] },
+  { name: 'Boundaries & conduct',        keywords: ['boundary','boundaries','inappropriate','personal','phone','social media','dress','conduct','professional','relationship'] }
+];
 
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-state">No sessions found.</div>';
+function deriveTheme(session) {
+  // 1) Prefer an explicit stored theme/category if the backend provides one.
+  const stored = session.theme || session.situation_theme
+    || (session.result_json && (session.result_json.theme || session.result_json.situationTheme));
+  if (stored && typeof stored === 'string') return stored.trim();
+
+  // 2) Otherwise classify from the situation text (used only here, never shown).
+  const text = (session.behavior || (session.result_json && session.result_json.behaviorObserved) || '').toLowerCase();
+  if (!text) return 'Other';
+
+  let best = null, bestHits = 0;
+  for (const def of THEME_DEFS) {
+    let hits = 0;
+    for (const kw of def.keywords) { if (text.includes(kw)) hits++; }
+    if (hits > bestHits) { bestHits = hits; best = def.name; }
+  }
+  return best || 'Other';
+}
+
+function renderThemes() {
+  const wrap = document.getElementById('themes-wrap');
+  const total = allSessions.length;
+
+  if (total === 0) {
+    wrap.innerHTML = '<div class="val-empty">No sessions yet. Themes will appear here as leaders use the tool.</div>';
     return;
   }
 
-  list.innerHTML = filtered.map(s => {
-    const date = new Date(s.created_at);
-    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const action = (s.recommended_action || '').toLowerCase();
-    const tags = (s.misaligned_values || []).map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('');
-    const behavior = s.behavior || (s.result_json?.behaviorObserved) || 'Session recorded';
-    const truncated = behavior.length > 120 ? behavior.slice(0,117) + '...' : behavior;
-    return `
-      <div class="session-row">
-        <div class="session-date">${escapeHtml(label)}</div>
-        <div class="session-body">
-          <div class="session-text">${escapeHtml(truncated)}</div>
-          <div class="session-tags">${tags}</div>
-        </div>
-        <div class="session-action"><span class="chip ${escapeHtml(action)}">${escapeHtml(s.recommended_action || '—')}</span></div>
-      </div>`;
-  }).join('');
-}
+  const counts = {};
+  allSessions.forEach(s => {
+    const t = deriveTheme(s);
+    counts[t] = (counts[t] || 0) + 1;
+  });
 
-function filterSessions(type, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderSessions(type);
+  // Sort by frequency, push "Other" to the end regardless of size.
+  const sorted = Object.entries(counts).sort((a, b) => {
+    if (a[0] === 'Other') return 1;
+    if (b[0] === 'Other') return -1;
+    return b[1] - a[1];
+  });
+
+  wrap.innerHTML = '<div class="themes-list">' + sorted.map(([name, count]) => {
+    const pct = Math.round(count / total * 100);
+    return `
+      <div class="theme-row">
+        <div class="theme-name">${escapeHtml(name)}</div>
+        <div class="theme-bar-bg"><div class="theme-bar" style="width:${pct}%"></div></div>
+        <div class="theme-pct">${pct}%</div>
+      </div>`;
+  }).join('') + '</div>';
 }
 </script>
 </body>
