@@ -144,6 +144,7 @@ body.booted .boot-splash { display: none; }
 .format-guide pre { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; color: var(--text2); line-height: 1.5; margin: 0; }
 
 .cred-line { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.cred-val.truncate { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .cred-line:last-child { border-bottom: none; }
 .cred-key { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; min-width: 110px; flex-shrink: 0; }
 .cred-val { font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; color: var(--text); word-break: break-all; }
@@ -265,7 +266,11 @@ body.booted .boot-splash { display: none; }
         <div id="success-creds"></div>
         <div class="warn-box" id="success-warn"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn-primary" id="btn-copy-all">Copy all details</button>
+          <button class="btn-primary" id="btn-email-invite">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+            Email the invite
+          </button>
+          <button class="btn-ghost" id="btn-copy-email">Copy email text</button>
           <button class="btn-ghost" id="btn-success-done">Done</button>
         </div>
       </div>
@@ -312,7 +317,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('wiz-cancel').addEventListener('click', cancelWizard);
   $('wiz-back').addEventListener('click', () => navStep(-1));
   $('wiz-next').addEventListener('click', () => navStep(1));
-  $('btn-copy-all').addEventListener('click', copyAllCreds);
+  $('btn-email-invite').addEventListener('click', () => {
+    const url = $('btn-email-invite').dataset.mailto;
+    if (url) window.location.href = url;
+  });
+  $('btn-copy-email').addEventListener('click', () => {
+    if (lastCreds && lastCreds.setupLink) copyText(inviteEmailBody(), $('btn-copy-email'));
+  });
   $('btn-success-done').addEventListener('click', () => { lastCreds = null; showHome(); });
 
   sb.auth.onAuthStateChange((event, sess) => {
@@ -865,64 +876,83 @@ async function submitCreate() {
 // ─────────────────────────────────────────────
 // Success screen
 // ─────────────────────────────────────────────
+// The ready-to-send invite email. Plain text — mail clients linkify the URL.
+function inviteEmailBody() {
+  return [
+    'Welcome to valuesalign.app!',
+    '',
+    `Your username is: ${lastCreds.username}`,
+    '',
+    'Please use the link below to set your password:',
+    lastCreds.setupLink,
+    '',
+    'The link works once and expires after about a day — if it stops working, just reply to this email and we\'ll send you a fresh one.',
+    '',
+    `Once your password is set, everyone at your organization signs in with this shared username and password at ${lastCreds.signin}`
+  ].join('\r\n');
+}
+
 function showSuccess(org, creds, hasHandbook, setupLink) {
   wiz = null;
   lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password, setupLink: setupLink || null };
   $('wizard-view').style.display = 'none';
   $('success-view').style.display = 'block';
   $('success-title').textContent = `${org.name} is ready`;
-  $('success-sub').textContent = 'Share these sign-in details with the organization. Everyone there uses this one shared login.'
+  $('success-sub').textContent = (lastCreds.setupLink
+    ? 'Click “Email the invite” below — the message is pre-written, you just add their address. They’ll choose their own password.'
+    : 'Share these sign-in details with the organization.')
     + (hasHandbook ? ' Their handbook is loaded, so guidance will cite their policies.' : '');
-  const linkRow = lastCreds.setupLink ? `
-    <div class="cred-line">
-      <span class="cred-key">Set-password link</span>
-      <span class="cred-val" style="font-size:12px;">${escapeHtml(lastCreds.setupLink)}</span>
-      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.setupLink)}">Copy</button>
-    </div>` : '';
-  $('success-creds').innerHTML = `
+
+  const rows = [`
     <div class="cred-line">
       <span class="cred-key">Sign-in page</span>
       <span class="cred-val">${escapeHtml(lastCreds.signin)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.signin)}">Copy</button>
-    </div>
+    </div>`, `
     <div class="cred-line">
       <span class="cred-key">Username</span>
       <span class="cred-val">${escapeHtml(lastCreds.username)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.username)}">Copy</button>
-    </div>${linkRow}
+    </div>`];
+  if (lastCreds.setupLink) {
+    rows.push(`
     <div class="cred-line">
-      <span class="cred-key">Backup password</span>
+      <span class="cred-key">Set-password link</span>
+      <span class="cred-val truncate">${escapeHtml(lastCreds.setupLink)}</span>
+      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.setupLink)}">Copy</button>
+    </div>`);
+  } else {
+    // Rare fallback: the link couldn't be generated, so the initial password
+    // is the org's only key and has to be surfaced this one time.
+    rows.push(`
+    <div class="cred-line">
+      <span class="cred-key">Password</span>
       <span class="cred-val">${escapeHtml(lastCreds.password)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.password)}">Copy</button>
-    </div>`;
+    </div>`);
+  }
+  $('success-creds').innerHTML = rows.join('');
+
   $('success-warn').innerHTML = lastCreds.setupLink
-    ? '<strong>Email them the set-password link — they’ll choose their own password.</strong> Nothing secret travels by email; the link works once and expires after about a day. The backup password is your safety net if the link goes unused (send it by text, not email) — it can’t be looked up later, so save it now if you think you’ll need it.'
-    : '<strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it\'s lost, it can be reset, but it cannot be recovered.';
+    ? 'The link works once and expires after about a day. If it goes unused, a fresh one can be issued.'
+    : '<strong>Save this password now.</strong> The set-password link couldn’t be generated this time, so the password is the organization’s only key — it can’t be looked up later.';
+
+  const emailBtn = $('btn-email-invite');
+  const copyEmailBtn = $('btn-copy-email');
+  if (lastCreds.setupLink) {
+    emailBtn.style.display = '';
+    copyEmailBtn.style.display = '';
+    emailBtn.dataset.mailto = `mailto:?subject=${encodeURIComponent('Welcome to Values Align App')}&body=${encodeURIComponent(inviteEmailBody())}`;
+  } else {
+    emailBtn.style.display = 'none';
+    copyEmailBtn.style.display = 'none';
+    delete emailBtn.dataset.mailto;
+  }
+
   document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
     btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
   });
   window.scrollTo({ top: 0 });
-}
-
-function copyAllCreds() {
-  if (!lastCreds) return;
-  const lines = [
-    `Values Align App — sign-in details for ${lastCreds.orgName}`,
-    '',
-    `Sign-in page: ${lastCreds.signin}`,
-    `Username: ${lastCreds.username}`
-  ];
-  if (lastCreds.setupLink) {
-    // Email-safe block: the link replaces the password entirely.
-    lines.push(`Choose your password: ${lastCreds.setupLink}`);
-    lines.push('');
-    lines.push('Click the link above to set your organization\'s password — it works once and expires, so use it soon (we can always send a fresh one). Everyone at your organization shares this one login.');
-  } else {
-    lines.push(`Password: ${lastCreds.password}`);
-    lines.push('');
-    lines.push('Everyone at your organization uses this one shared login.');
-  }
-  copyText(lines.join('\n'), $('btn-copy-all'));
 }
 
 async function copyText(text, btn) {
