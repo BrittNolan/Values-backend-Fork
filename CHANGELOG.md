@@ -100,6 +100,9 @@ The system prompt lives inside the `generate()` function in `index.html`. Key ru
 - The screen includes the format rules and an example, plus a live character/section counter; review screen summarizes what will be saved and warns when no section headers are detected
 - `api/superadmin/orgs.js` POST now inserts the `handbooks` row (`is_active: true`) when provided — `/api/analyze` picks it up automatically — and rolls it back with the rest on partial failure
 
+**Single front door for admins (`org-loader.js`):**
+- Super admins now sign in at the main app (`/`) like everyone else and are automatically redirected to `/superadmin.html` — both on fresh login and when returning with an existing session. Org logins are unaffected.
+
 **Role Play handbook made per-organization (`api/roleplay.js`):**
 - The coach prompt previously told the AI the LifeMoves handbook was available for EVERY org (hardcoded import from `lib/handbook.js`). It now checks the signed-in org's own `handbooks` row: orgs with one get a correctly-named reference, orgs without get no handbook block at all (lookup is fail-open)
 - Compliance log now records the actual signed-in org name instead of always "LifeMoves"

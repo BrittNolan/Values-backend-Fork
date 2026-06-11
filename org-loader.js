@@ -105,6 +105,12 @@
       if (session) {
         accessToken = session.access_token;
         currentUser = session.user;
+        // Super admins have no org membership; their home is the onboarding
+        // console. Route them there instead of the org app.
+        if (session.user && session.user.app_metadata && session.user.app_metadata.is_super_admin === true) {
+          window.location.replace('/superadmin.html');
+          return;
+        }
         const me = await fetchMe();
         if (me) {
           currentOrg = me.org;
@@ -257,6 +263,13 @@
 
       accessToken = data.session.access_token;
       currentUser = data.user;
+
+      // Super admins sign in here like everyone else, then get routed to
+      // the onboarding console — they have no org for the app to load.
+      if (data.user && data.user.app_metadata && data.user.app_metadata.is_super_admin === true) {
+        window.location.replace('/superadmin.html');
+        return;
+      }
 
       const me = await fetchMe();
       if (!me) {
