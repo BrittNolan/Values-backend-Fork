@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Values Lab — Onboarding</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B2A4A'/%3E%3Ctext x='32' y='42' font-family='Georgia,serif' font-size='32' font-weight='700' text-anchor='middle' fill='%23C9A84C'%3EV%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #1B2A4A; --gold: #C9A84C; --gold-light: #f5edd8; --gold-pale: #fdf9f0;
+  --bg: #f2efe8; --white: #ffffff;
+  --text: #1a1a1a; --text2: #4a4a48; --text3: #8a8a85;
+  --border: rgba(27,42,74,0.1); --border2: rgba(27,42,74,0.2);
+  --green: #2d7a5f; --green-bg: #eaf5f0; --green-border: #7ecbb0;
+  --amber: #a06020; --amber-bg: #fef3e2; --amber-border: #e8b86d;
+  --red: #8b2020; --red-bg: #fdf0f0; --red-border: #e07070;
+  --r: 8px; --rl: 16px;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--text); min-height: 100vh; }
+
+/* ── INITIAL SPLASH ── */
+.boot-splash { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.boot-splash .spinner { border-color: rgba(255,255,255,0.15); border-top-color: var(--gold); }
+body.booted { background: var(--bg); }
+body.booted .boot-splash { display: none; }
+
+/* ── LOGIN ── */
+.login-wrap { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.25rem; background: var(--navy); }
+.login-logo { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 2.5rem; }
+.login-logo h1 { font-family: 'Playfair Display', serif; font-size: 44px; font-weight: 700; color: var(--white); line-height: 1; }
+.login-logo .lab { font-size: 13px; color: var(--gold); letter-spacing: 0.35em; text-transform: uppercase; }
+.login-logo .byline { font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.2em; text-transform: uppercase; }
+.login-card { background: var(--white); border-radius: var(--rl); padding: 2rem; width: 100%; max-width: 380px; }
+.login-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 1.5rem; text-align: center; }
+.field-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.login-input, .w-input, .w-textarea {
+  width: 100%; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--r);
+  padding: 12px 14px; font-weight: 300; transition: border-color 0.2s;
+}
+.login-input { margin-bottom: 1rem; }
+.login-input:focus, .w-input:focus, .w-textarea:focus { outline: none; border-color: var(--navy); }
+.w-textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
+.btn-login {
+  width: 100%; padding: 13px; background: var(--navy); color: var(--gold); border: none;
+  border-radius: var(--r); font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; letter-spacing: 0.05em; transition: opacity 0.15s; margin-top: 0.5rem;
+}
+.btn-login:hover { opacity: 0.88; }
+.btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-err { font-size: 12px; color: var(--red); background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--r); padding: 9px 12px; margin-top: 0.75rem; font-weight: 300; display: none; }
+.login-notice { font-size: 12px; color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: var(--r); padding: 9px 12px; margin-bottom: 0.75rem; font-weight: 300; display: none; }
+.login-footer { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 2rem; text-align: center; }
+
+/* ── SHELL ── */
+.shell { display: none; min-height: 100vh; flex-direction: column; }
+.shell-header { background: var(--navy); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; flex-shrink: 0; }
+.shell-header-left { display: flex; align-items: center; gap: 14px; }
+.shell-wordmark { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--white); }
+.shell-wordmark span { font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 400; color: var(--gold); letter-spacing: 0.3em; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
+.shell-pill { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.35); color: var(--gold); font-size: 12px; padding: 4px 12px; border-radius: 999px; }
+.shell-header-right { display: flex; align-items: center; gap: 12px; }
+.shell-user { font-size: 11px; color: rgba(255,255,255,0.35); }
+.btn-logout { font-size: 12px; color: rgba(255,255,255,0.45); background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--r); padding: 6px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+.btn-logout:hover { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.3); }
+
+.main { width: 100%; max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; flex: 1; }
+
+/* ── HOME ── */
+.home-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.home-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--navy); }
+.home-sub { font-size: 13px; color: var(--text3); font-weight: 300; margin-top: 4px; }
+.btn-primary {
+  background: var(--navy); color: var(--gold); border: none; border-radius: var(--r);
+  font-size: 14px; font-weight: 500; padding: 12px 22px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; letter-spacing: 0.03em; transition: opacity 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost {
+  background: transparent; color: var(--text2); border: 1px solid var(--border2); border-radius: var(--r);
+  font-size: 13px; font-weight: 400; padding: 11px 20px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+}
+.btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
+
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--rl); padding: 1.5rem; }
+.orgs-list { display: flex; flex-direction: column; }
+.org-row { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid var(--border); }
+.org-row:last-child { border-bottom: none; }
+.org-swatch { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; border: 1px solid var(--border); position: relative; overflow: hidden; }
+.org-swatch i { position: absolute; right: 0; bottom: 0; width: 45%; height: 45%; border-top-left-radius: 6px; }
+.org-row-name { font-size: 14.5px; font-weight: 500; color: var(--text); }
+.org-row-meta { font-size: 12px; color: var(--text3); font-weight: 300; margin-top: 2px; }
+.org-row-right { margin-left: auto; font-size: 11.5px; color: var(--text3); font-weight: 300; text-align: right; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 13px; font-weight: 300; }
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 2rem auto; display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── WIZARD ── */
+.wiz-head { margin-bottom: 1.25rem; }
+.wiz-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--navy); }
+.wiz-steps { display: flex; gap: 6px; margin: 1.1rem 0 1.25rem; flex-wrap: wrap; }
+.wiz-step-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--border2); color: var(--text3); background: transparent; font-weight: 400; }
+.wiz-step-chip .n { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; background: rgba(27,42,74,0.08); color: var(--text3); font-size: 10px; font-weight: 500; }
+.wiz-step-chip.active { background: var(--navy); border-color: var(--navy); color: var(--gold); }
+.wiz-step-chip.active .n { background: var(--gold); color: var(--navy); }
+.wiz-step-chip.done { border-color: var(--green-border); color: var(--green); background: var(--green-bg); }
+.wiz-step-chip.done .n { background: var(--green); color: #fff; }
+
+.w-field { margin-bottom: 1.1rem; }
+.w-hint { font-size: 11.5px; color: var(--text3); font-weight: 300; margin-top: 6px; line-height: 1.5; }
+.w-hint code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.w-err { font-size: 12px; color: var(--red); background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--r); padding: 10px 13px; margin-bottom: 1rem; font-weight: 300; display: none; }
+.w-section-title { font-size: 12px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+.w-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 1.5rem; }
+.w-nav .right { display: flex; gap: 10px; margin-left: auto; }
+
+.color-field { display: flex; align-items: center; gap: 10px; }
+.color-field input[type="color"] { width: 46px; height: 42px; padding: 3px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--bg); cursor: pointer; }
+.color-field .w-input { max-width: 130px; font-family: ui-monospace, Consolas, monospace; }
+.logo-preview { margin-top: 10px; display: none; align-items: center; gap: 10px; }
+.logo-preview img { max-height: 54px; max-width: 200px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 6px 10px; }
+
+.value-card { border: 1px solid var(--border2); border-radius: 12px; padding: 1rem 1rem 0.85rem; margin-bottom: 0.9rem; background: var(--gold-pale); position: relative; }
+.value-card .w-input, .value-card .w-textarea { background: var(--white); }
+.value-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.value-card-label { font-size: 11px; font-weight: 500; color: var(--amber); text-transform: uppercase; letter-spacing: 0.12em; }
+.value-remove { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 6px; }
+.value-remove:hover { color: var(--red); }
+.btn-link { background: none; border: none; color: var(--navy); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline; padding: 4px 0; }
+.btn-link:hover { opacity: 0.7; }
+.es-fields { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border2); }
+.value-card.has-es .es-fields { display: block; }
+
+.pw-row { display: flex; gap: 10px; align-items: center; }
+.pw-row .w-input { font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.04em; }
+.cred-line { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.cred-line:last-child { border-bottom: none; }
+.cred-key { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; min-width: 110px; flex-shrink: 0; }
+.cred-val { font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; color: var(--text); word-break: break-all; }
+.btn-copy { margin-left: auto; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; font-size: 11px; padding: 5px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); transition: all 0.15s; }
+.btn-copy:hover { border-color: var(--navy); color: var(--navy); }
+.btn-copy.copied { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+
+.review-block { margin-bottom: 1.25rem; }
+.review-kv { display: flex; gap: 10px; font-size: 13.5px; padding: 6px 0; font-weight: 300; color: var(--text2); }
+.review-kv b { font-weight: 500; color: var(--text); min-width: 110px; flex-shrink: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding-top: 1px; }
+.review-vals { margin-top: 4px; }
+.review-val { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.review-val:last-child { border-bottom: none; }
+.review-val-name { font-size: 13.5px; font-weight: 500; color: var(--text); }
+.review-val-def { font-size: 12.5px; color: var(--text2); font-weight: 300; line-height: 1.55; margin-top: 2px; }
+.review-val-es { font-size: 11.5px; color: var(--text3); font-weight: 300; font-style: italic; margin-top: 3px; }
+.swatch-dot { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border2); vertical-align: -2px; margin-right: 6px; }
+
+/* ── SUCCESS ── */
+.success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--green-bg); border: 1px solid var(--green-border); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+.success-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--navy); text-align: center; }
+.success-sub { font-size: 13px; color: var(--text3); font-weight: 300; text-align: center; margin-top: 6px; margin-bottom: 1.5rem; }
+.warn-box { font-size: 12.5px; color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: var(--r); padding: 11px 14px; font-weight: 300; margin: 1.25rem 0; line-height: 1.55; }
+
+.shell-footer { padding: 1.5rem 2rem; border-top: 1px solid var(--border); text-align: center; }
+.shell-footer p { font-size: 11px; color: var(--text3); font-weight: 300; }
+.shell-footer strong { color: var(--gold); font-weight: 500; }
+
+@media (max-width: 640px) {
+  .main { padding: 1.5rem 1rem 3rem; }
+  .shell-header { padding: 0 1rem; }
+  .shell-user { display: none; }
+  .cred-line { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="boot-splash" id="boot-splash"><div class="spinner"></div></div>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-view">
+  <div class="login-logo">
+    <h1>Values</h1>
+    <div class="lab">Lab</div>
+    <div class="byline">Onboarding Console</div>
+  </div>
+  <div class="login-card">
+    <div class="login-title">Administrator sign in</div>
+    <div class="login-notice" id="login-notice"></div>
+    <div class="field-label">Email</div>
+    <input type="email" class="login-input" id="login-email" placeholder="you@example.com" autocomplete="username" />
+    <div class="field-label">Password</div>
+    <input type="password" class="login-input" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="btn-login" id="login-btn">Sign in</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+  <div class="login-footer">Values Lab · Karabed Leadership Group · Confidential</div>
+</div>
+
+<!-- SHELL -->
+<div class="shell" id="shell">
+  <div class="shell-header">
+    <div class="shell-header-left">
+      <div class="shell-wordmark">Values <span>Lab</span></div>
+      <div class="shell-pill">Onboarding</div>
+    </div>
+    <div class="shell-header-right">
+      <span class="shell-user" id="shell-user"></span>
+      <button class="btn-logout" id="btn-signout">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- HOME -->
+    <div id="home-view" style="display:none;">
+      <div class="home-head">
+        <div>
+          <div class="home-title">Organizations</div>
+          <div class="home-sub" id="home-sub">Every organization onboarded into Values Lab.</div>
+        </div>
+        <button class="btn-primary" id="btn-new-org">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Onboard new organization
+        </button>
+      </div>
+      <div class="card">
+        <div class="orgs-list" id="orgs-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- WIZARD -->
+    <div id="wizard-view" style="display:none;">
+      <div class="wiz-head">
+        <div class="wiz-title">Onboard a new organization</div>
+        <div class="wiz-steps" id="wiz-steps"></div>
+      </div>
+      <div class="card">
+        <div class="w-err" id="wiz-err"></div>
+        <div id="wizard-body"></div>
+        <div class="w-nav">
+          <button class="btn-ghost" id="wiz-cancel">Cancel</button>
+          <div class="right">
+            <button class="btn-ghost" id="wiz-back" style="display:none;">Back</button>
+            <button class="btn-primary" id="wiz-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="success-view" style="display:none;">
+      <div class="card">
+        <div class="success-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2d7a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div class="success-title" id="success-title">Organization created</div>
+        <div class="success-sub">Share these sign-in details with the organization. Everyone there uses this one shared login.</div>
+        <div id="success-creds"></div>
+        <div class="warn-box"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-primary" id="btn-copy-all">Copy all details</button>
+          <button class="btn-ghost" id="btn-success-done">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell-footer">
+    <p>Powered by <strong>Karabed Leadership Group</strong> — Values Lab</p>
+  </div>
+</div>
+
+<script type="module">
+let sb = null;
+let accessToken = null;
+let currentUser = null;
+let wiz = null;
+let lastCreds = null;
+
+const $ = id => document.getElementById(id);
+
+const STEPS = ['Organization', 'Branding', 'Values', 'Login', 'Review'];
+const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+const escapeAttr = escapeHtml;
+
+// ─────────────────────────────────────────────
+// Boot + auth routing
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  const mod = await import('/api/supabase-browser');
+  sb = mod.supabase;
+
+  $('login-btn').addEventListener('click', doLogin);
+  $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') $('login-password').focus(); });
+  $('btn-signout').addEventListener('click', doLogout);
+  $('btn-new-org').addEventListener('click', startWizard);
+  $('wiz-cancel').addEventListener('click', cancelWizard);
+  $('wiz-back').addEventListener('click', () => navStep(-1));
+  $('wiz-next').addEventListener('click', () => navStep(1));
+  $('btn-copy-all').addEventListener('click', copyAllCreds);
+  $('btn-success-done').addEventListener('click', () => { lastCreds = null; showHome(); });
+
+  sb.auth.onAuthStateChange((event, sess) => {
+    if (sess) { accessToken = sess.access_token; currentUser = sess.user; }
+    else { accessToken = null; currentUser = null; }
+  });
+
+  await routeInitialView();
+
+  window.addEventListener('pageshow', async (ev) => {
+    if (!ev.persisted) return;
+    document.body.classList.remove('booted');
+    await routeInitialView();
+  });
+
+  // Don't let an accidental tab close eat 10 minutes of typed values.
+  window.addEventListener('beforeunload', (e) => {
+    if (wizardDirty()) { e.preventDefault(); e.returnValue = ''; }
+  });
+});
+
+async function routeInitialView() {
+  let routed = false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      accessToken = session.access_token;
+      currentUser = session.user;
+      const probe = await fetchOrgs();
+      if (probe.ok) {
+        showShell();
+        renderOrgs(probe.orgs);
+        routed = true;
+      } else if (probe.status === 403) {
+        // Signed in (e.g. as an org account) but not a super admin.
+        showLogin('The signed-in account doesn’t have onboarding access. Sign in with your administrator account.');
+        routed = true;
+      }
+    }
+  } catch (e) { /* fall through to login */ }
+  if (!routed) showLogin();
+  document.body.classList.add('booted');
+}
+
+async function fetchOrgs() {
+  try {
+    const r = await fetch('/api/superadmin/orgs', { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok) return { ok: false, status: r.status };
+    const { orgs } = await r.json();
+    return { ok: true, status: 200, orgs: orgs || [] };
+  } catch (e) {
+    return { ok: false, status: 0 };
+  }
+}
+
+function showLogin(notice) {
+  $('shell').style.display = 'none';
+  $('login-view').style.display = 'flex';
+  const n = $('login-notice');
+  if (notice) { n.textContent = notice; n.style.display = 'block'; }
+  else { n.style.display = 'none'; }
+}
+
+function showShell() {
+  $('login-view').style.display = 'none';
+  $('shell').style.display = 'flex';
+  $('shell-user').textContent = currentUser?.email || '';
+  showHome();
+}
+
+function showHome() {
+  wiz = null;
+  $('wizard-view').style.display = 'none';
+  $('success-view').style.display = 'none';
+  $('home-view').style.display = 'block';
+  refreshOrgs();
+}
+
+async function refreshOrgs() {
+  $('orgs-list').innerHTML = '<div class="spinner"></div>';
+  const probe = await fetchOrgs();
+  if (!probe.ok) {
+    $('orgs-list').innerHTML = '<div class="empty-state">Could not load organizations. Refresh the page to try again.</div>';
+    return;
+  }
+  renderOrgs(probe.orgs);
+}
+
+function renderOrgs(orgs) {
+  const list = $('orgs-list');
+  $('home-sub').textContent = orgs.length
+    ? `${orgs.length} organization${orgs.length !== 1 ? 's' : ''} onboarded into Values Lab.`
+    : 'Every organization onboarded into Values Lab.';
+  if (!orgs.length) {
+    list.innerHTML = '<div class="empty-state">No organizations yet. Onboard the first one!</div>';
+    return;
+  }
+  list.innerHTML = orgs.map(o => {
+    const date = o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    return `
+      <div class="org-row">
+        <div class="org-swatch" style="background:${escapeAttr(o.primary_color || '#1B2A4A')};"><i style="background:${escapeAttr(o.accent_color || '#C9A84C')};"></i></div>
+        <div>
+          <div class="org-row-name">${escapeHtml(o.name)}</div>
+          <div class="org-row-meta">username: ${escapeHtml(o.username)} &middot; ${o.values_count} value${o.values_count !== 1 ? 's' : ''}${o.has_logo ? ' &middot; logo' : ''}</div>
+        </div>
+        <div class="org-row-right">added<br>${escapeHtml(date)}</div>
+      </div>`;
+  }).join('');
+}
+
+async function doLogin() {
+  const email = $('login-email').value.trim().toLowerCase();
+  const password = $('login-password').value;
+  const btn = $('login-btn');
+  const err = $('login-err');
+  err.style.display = 'none';
+  if (!email || !password) { showLoginErr('Please enter your email and password.'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showLoginErr('Incorrect email or password. Please try again.'); return; }
+    accessToken = data.session.access_token;
+    currentUser = data.user;
+    const probe = await fetchOrgs();
+    if (probe.status === 403) {
+      showLoginErr('This account doesn’t have onboarding access.');
+      return;
+    }
+    if (!probe.ok) { showLoginErr('Could not load the console. Please try again.'); return; }
+    $('login-notice').style.display = 'none';
+    showShell();
+    renderOrgs(probe.orgs);
+  } catch (e) {
+    showLoginErr('Connection error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+}
+
+function showLoginErr(msg) {
+  const err = $('login-err');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+async function doLogout() {
+  if (wizardDirty() && !confirm('You have an unfinished onboarding. Sign out and lose it?')) return;
+  wiz = null;
+  try { if (sb) await sb.auth.signOut(); } catch (e) { /* ignore */ }
+  $('login-email').value = '';
+  $('login-password').value = '';
+  showLogin();
+}
+
+// ─────────────────────────────────────────────
+// Wizard
+// ─────────────────────────────────────────────
+function blankValue() { return { name: '', definition: '', name_es: '', definition_es: '', es: false }; }
+
+function startWizard() {
+  wiz = {
+    step: 0,
+    name: '', username: '', usernameTouched: false,
+    primary: '#1B2A4A', accent: '#C9A84C', logo: '',
+    values: [blankValue()],
+    password: ''
+  };
+  $('home-view').style.display = 'none';
+  $('success-view').style.display = 'none';
+  $('wizard-view').style.display = 'block';
+  renderStep();
+}
+
+function wizardDirty() {
+  if (!wiz) return false;
+  return !!(wiz.name || wiz.username || wiz.logo || wiz.values.some(v => v.name || v.definition));
+}
+
+function cancelWizard() {
+  collectStep(false);
+  if (wizardDirty() && !confirm('Discard this onboarding? Everything you’ve entered will be lost.')) return;
+  showHome();
+}
+
+function setWizErr(msg) {
+  const el = $('wiz-err');
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else { el.style.display = 'none'; }
+}
+
+function navStep(dir) {
+  if (dir > 0) {
+    const err = collectStep(true);
+    if (err) { setWizErr(err); return; }
+    if (wiz.step === STEPS.length - 1) { submitCreate(); return; }
+  } else {
+    collectStep(false);
+  }
+  setWizErr(null);
+  wiz.step = Math.max(0, Math.min(STEPS.length - 1, wiz.step + dir));
+  renderStep();
+}
+
+function renderStepChips() {
+  $('wiz-steps').innerHTML = STEPS.map((label, i) => {
+    const cls = i === wiz.step ? 'active' : (i < wiz.step ? 'done' : '');
+    const n = i < wiz.step
+      ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="color:#fff;"><path d="M20 6L9 17l-5-5"/></svg>'
+      : String(i + 1);
+    return `<span class="wiz-step-chip ${cls}"><span class="n">${n}</span>${label}</span>`;
+  }).join('');
+}
+
+function renderStep() {
+  renderStepChips();
+  $('wiz-back').style.display = wiz.step === 0 ? 'none' : 'inline-block';
+  $('wiz-next').textContent = wiz.step === STEPS.length - 1 ? 'Create organization' : 'Next';
+  const body = $('wizard-body');
+
+  if (wiz.step === 0) {
+    body.innerHTML = `
+      <div class="w-section-title">Who are we onboarding?</div>
+      <div class="w-field">
+        <div class="field-label">Organization name</div>
+        <input type="text" class="w-input" id="f-name" placeholder="e.g. LifeMoves" maxlength="80" value="${escapeAttr(wiz.name)}" />
+      </div>
+      <div class="w-field">
+        <div class="field-label">Sign-in username</div>
+        <input type="text" class="w-input" id="f-username" placeholder="e.g. lifemoves" maxlength="40" value="${escapeAttr(wiz.username)}" />
+        <div class="w-hint">Lowercase letters, numbers, and hyphens. Everyone at the organization signs in with this one username &mdash; their login email will be <code id="email-preview">&hellip;</code></div>
+      </div>`;
+    const nameEl = $('f-name'), userEl = $('f-username');
+    const updatePreview = () => {
+      const u = userEl.value.trim().toLowerCase();
+      $('email-preview').textContent = u ? `${u}+placeholder@valuesalign.app` : '…';
+    };
+    nameEl.addEventListener('input', () => {
+      if (!wiz.usernameTouched) { userEl.value = slugify(nameEl.value); updatePreview(); }
+    });
+    userEl.addEventListener('input', () => { wiz.usernameTouched = userEl.value.length > 0; updatePreview(); });
+    updatePreview();
+    nameEl.focus();
+
+  } else if (wiz.step === 1) {
+    body.innerHTML = `
+      <div class="w-section-title">Branding (optional &mdash; defaults look great)</div>
+      <div class="w-field">
+        <div class="field-label">Primary color</div>
+        <div class="color-field">
+          <input type="color" id="f-primary-pick" value="${escapeAttr(wiz.primary)}" />
+          <input type="text" class="w-input" id="f-primary" maxlength="7" value="${escapeAttr(wiz.primary)}" />
+        </div>
+        <div class="w-hint">Used for buttons, headers, and highlights inside the app.</div>
+      </div>
+      <div class="w-field">
+        <div class="field-label">Accent color</div>
+        <div class="color-field">
+          <input type="color" id="f-accent-pick" value="${escapeAttr(wiz.accent)}" />
+          <input type="text" class="w-input" id="f-accent" maxlength="7" value="${escapeAttr(wiz.accent)}" />
+        </div>
+      </div>
+      <div class="w-field">
+        <div class="field-label">Logo URL (optional)</div>
+        <input type="text" class="w-input" id="f-logo" placeholder="https://example.org/logo.png" maxlength="500" value="${escapeAttr(wiz.logo)}" />
+        <div class="w-hint">A link to the organization’s logo image, if they have one online. Can always be added later.</div>
+        <div class="logo-preview" id="logo-preview"><img id="logo-preview-img" alt="Logo preview" /></div>
+      </div>`;
+    bindColorPair('f-primary-pick', 'f-primary');
+    bindColorPair('f-accent-pick', 'f-accent');
+    const logoEl = $('f-logo');
+    const syncLogoPreview = () => {
+      const url = logoEl.value.trim();
+      const wrap = $('logo-preview'), img = $('logo-preview-img');
+      if (/^https:\/\/.+/i.test(url)) { img.src = url; wrap.style.display = 'flex'; }
+      else { wrap.style.display = 'none'; }
+    };
+    $('logo-preview-img').addEventListener('error', () => { $('logo-preview').style.display = 'none'; });
+    logoEl.addEventListener('change', syncLogoPreview);
+    syncLogoPreview();
+
+  } else if (wiz.step === 2) {
+    body.innerHTML = `
+      <div class="w-section-title">The organization’s values</div>
+      <div class="w-hint" style="margin:-6px 0 14px;">These pre-load into Values Lab for everyone at the organization. Most organizations have 4&ndash;7 values, each with a short definition in the organization’s own words. Spanish translations are optional &mdash; the app offers a Spanish mode.</div>
+      <div id="values-rows"></div>
+      <button class="btn-ghost" id="btn-add-value" type="button" style="width:100%;">+ Add another value</button>`;
+    renderValueRows();
+    $('btn-add-value').addEventListener('click', () => {
+      syncValuesFromDom();
+      wiz.values.push(blankValue());
+      renderValueRows();
+      const rows = document.querySelectorAll('.value-card input[data-k="name"]');
+      if (rows.length) rows[rows.length - 1].focus();
+    });
+
+  } else if (wiz.step === 3) {
+    if (!wiz.password) wiz.password = genPassword();
+    body.innerHTML = `
+      <div class="w-section-title">Shared login for the organization</div>
+      <div class="w-field">
+        <div class="field-label">Username</div>
+        <div class="cred-val" style="padding:4px 0;">${escapeHtml(wiz.username)}</div>
+      </div>
+      <div class="w-field">
+        <div class="field-label">Password</div>
+        <div class="pw-row">
+          <input type="text" class="w-input" id="f-password" maxlength="72" value="${escapeAttr(wiz.password)}" />
+          <button class="btn-ghost" id="btn-regen" type="button" style="flex-shrink:0;">Regenerate</button>
+        </div>
+        <div class="w-hint">At least 10 characters. The generated one is strong &mdash; you’ll get a copy button at the end to share it with the organization.</div>
+      </div>`;
+    $('btn-regen').addEventListener('click', () => { $('f-password').value = genPassword(); });
+
+  } else if (wiz.step === 4) {
+    const valsHtml = wiz.values.map(v => `
+      <div class="review-val">
+        <div class="review-val-name">${escapeHtml(v.name)}</div>
+        ${v.definition ? `<div class="review-val-def">${escapeHtml(v.definition)}</div>` : ''}
+        ${v.name_es ? `<div class="review-val-es">ES: ${escapeHtml(v.name_es)}${v.definition_es ? ' — ' + escapeHtml(v.definition_es) : ''}</div>` : ''}
+      </div>`).join('');
+    body.innerHTML = `
+      <div class="w-section-title">Review &amp; create</div>
+      <div class="review-block">
+        <div class="review-kv"><b>Organization</b> ${escapeHtml(wiz.name)}</div>
+        <div class="review-kv"><b>Username</b> ${escapeHtml(wiz.username)}</div>
+        <div class="review-kv"><b>Colors</b> <span><span class="swatch-dot" style="background:${escapeAttr(wiz.primary)};"></span>${escapeHtml(wiz.primary)} &nbsp; <span class="swatch-dot" style="background:${escapeAttr(wiz.accent)};"></span>${escapeHtml(wiz.accent)}</span></div>
+        <div class="review-kv"><b>Logo</b> ${wiz.logo ? escapeHtml(wiz.logo) : 'None'}</div>
+        <div class="review-kv"><b>Password</b> <span style="font-family:ui-monospace,Consolas,monospace;">${escapeHtml(wiz.password)}</span></div>
+      </div>
+      <div class="review-block">
+        <div class="field-label">Values (${wiz.values.length})</div>
+        <div class="review-vals">${valsHtml}</div>
+      </div>
+      <div class="w-hint">Clicking <strong>Create organization</strong> sets up their workspace and login. You’ll see the sign-in details on the next screen.</div>`;
+  }
+}
+
+function renderValueRows() {
+  $('values-rows').innerHTML = wiz.values.map((v, i) => `
+    <div class="value-card ${v.es ? 'has-es' : ''}" data-i="${i}">
+      <div class="value-card-head">
+        <span class="value-card-label">Value ${i + 1}</span>
+        ${wiz.values.length > 1 ? `<button class="value-remove" type="button" data-remove="${i}" title="Remove this value">&times;</button>` : ''}
+      </div>
+      <div class="w-field">
+        <div class="field-label">Name</div>
+        <input type="text" class="w-input" data-k="name" placeholder="e.g. Compassion" maxlength="80" value="${escapeAttr(v.name)}" />
+      </div>
+      <div class="w-field" style="margin-bottom:0.5rem;">
+        <div class="field-label">Definition (in their words)</div>
+        <textarea class="w-textarea" data-k="definition" maxlength="1200" placeholder="What this value means at this organization…">${escapeHtml(v.definition)}</textarea>
+      </div>
+      <button class="btn-link" type="button" data-es="${i}">${v.es ? 'Remove Spanish translation' : '+ Add Spanish translation'}</button>
+      <div class="es-fields">
+        <div class="w-field">
+          <div class="field-label">Name (Spanish)</div>
+          <input type="text" class="w-input" data-k="name_es" placeholder="e.g. Compasión" maxlength="80" value="${escapeAttr(v.name_es)}" />
+        </div>
+        <div class="w-field" style="margin-bottom:0;">
+          <div class="field-label">Definition (Spanish)</div>
+          <textarea class="w-textarea" data-k="definition_es" maxlength="1200">${escapeHtml(v.definition_es)}</textarea>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => {
+    syncValuesFromDom();
+    wiz.values.splice(Number(btn.dataset.remove), 1);
+    if (!wiz.values.length) wiz.values.push(blankValue());
+    renderValueRows();
+  }));
+  document.querySelectorAll('[data-es]').forEach(btn => btn.addEventListener('click', () => {
+    syncValuesFromDom();
+    const v = wiz.values[Number(btn.dataset.es)];
+    v.es = !v.es;
+    if (!v.es) { v.name_es = ''; v.definition_es = ''; }
+    renderValueRows();
+  }));
+}
+
+function syncValuesFromDom() {
+  document.querySelectorAll('.value-card').forEach(card => {
+    const v = wiz.values[Number(card.dataset.i)];
+    if (!v) return;
+    card.querySelectorAll('[data-k]').forEach(el => { v[el.dataset.k] = el.value; });
+  });
+}
+
+// Reads the current step's inputs into wiz. With validate=true, returns an
+// error message string (or null if the step is good).
+function collectStep(validate) {
+  if (!wiz) return null;
+  if (wiz.step === 0) {
+    const nameEl = $('f-name'), userEl = $('f-username');
+    if (nameEl) wiz.name = nameEl.value.trim();
+    if (userEl) wiz.username = userEl.value.trim().toLowerCase();
+    if (validate) {
+      if (wiz.name.length < 2) return 'Please enter the organization’s name (at least 2 characters).';
+      if (!USERNAME_RE.test(wiz.username)) return 'Username must be 2–40 characters: lowercase letters, numbers, and hyphens only (no spaces).';
+    }
+  } else if (wiz.step === 1) {
+    const p = $('f-primary'), a = $('f-accent'), l = $('f-logo');
+    if (p) wiz.primary = p.value.trim();
+    if (a) wiz.accent = a.value.trim();
+    if (l) wiz.logo = l.value.trim();
+    if (validate) {
+      const hex = /^#[0-9a-fA-F]{6}$/;
+      if (!hex.test(wiz.primary) || !hex.test(wiz.accent)) return 'Colors must be 6-digit hex codes like #1B2A4A.';
+      if (wiz.logo && !/^https:\/\/.+/i.test(wiz.logo)) return 'The logo must be a full https:// link, or leave it blank.';
+    }
+  } else if (wiz.step === 2) {
+    syncValuesFromDom();
+    if (validate) {
+      // Drop rows that are entirely empty, then check what's left.
+      const kept = wiz.values.filter(v =>
+        v.name.trim() || v.definition.trim() || v.name_es.trim() || v.definition_es.trim());
+      for (const v of kept) {
+        if (!v.name.trim()) return 'Every value needs a name — one of your values has a definition but no name.';
+      }
+      if (!kept.length) return 'Please add at least one value.';
+      if (kept.length > 15) return 'Maximum 15 values.';
+      wiz.values = kept.map(v => ({
+        name: v.name.trim(), definition: v.definition.trim(),
+        name_es: v.name_es.trim(), definition_es: v.definition_es.trim(),
+        es: !!(v.name_es.trim() || v.definition_es.trim())
+      }));
+    }
+  } else if (wiz.step === 3) {
+    const pw = $('f-password');
+    if (pw) wiz.password = pw.value;
+    if (validate && (wiz.password.length < 10 || wiz.password.length > 72)) {
+      return 'Password must be 10–72 characters.';
+    }
+  }
+  return null;
+}
+
+function bindColorPair(pickId, textId) {
+  const pick = $(pickId), text = $(textId);
+  pick.addEventListener('input', () => { text.value = pick.value.toUpperCase(); });
+  text.addEventListener('input', () => {
+    const v = text.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) pick.value = v;
+  });
+}
+
+function slugify(name) {
+  return name.toLowerCase()
+    .normalize('NFD')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 40);
+}
+
+function genPassword() {
+  // No look-alike characters (0/O, 1/l/I) so it survives being read aloud.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
+}
+
+async function submitCreate() {
+  const btn = $('wiz-next');
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  setWizErr(null);
+  try {
+    const payload = {
+      name: wiz.name,
+      username: wiz.username,
+      primary_color: wiz.primary,
+      accent_color: wiz.accent,
+      logo_url: wiz.logo || '',
+      values: wiz.values.map(v => {
+        const out = { name: v.name };
+        if (v.definition) out.definition = v.definition;
+        if (v.name_es) out.name_es = v.name_es;
+        if (v.definition_es) out.definition_es = v.definition_es;
+        return out;
+      }),
+      password: wiz.password
+    };
+    const r = await fetch('/api/superadmin/orgs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const msg = data.error || 'Something went wrong. Please try again.';
+      if (r.status === 409) {
+        // Username collision: send her back to step 1 to pick another.
+        wiz.step = 0;
+        renderStep();
+      }
+      setWizErr(msg);
+      return;
+    }
+    showSuccess(data.org, data.credentials);
+  } catch (e) {
+    setWizErr('Connection error. Nothing was created — please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = wiz && wiz.step === STEPS.length - 1 ? 'Create organization' : 'Next';
+  }
+}
+
+// ─────────────────────────────────────────────
+// Success screen
+// ─────────────────────────────────────────────
+function showSuccess(org, creds) {
+  wiz = null;
+  lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password };
+  $('wizard-view').style.display = 'none';
+  $('success-view').style.display = 'block';
+  $('success-title').textContent = `${org.name} is ready`;
+  $('success-creds').innerHTML = `
+    <div class="cred-line">
+      <span class="cred-key">Sign-in page</span>
+      <span class="cred-val">${escapeHtml(lastCreds.signin)}</span>
+      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.signin)}">Copy</button>
+    </div>
+    <div class="cred-line">
+      <span class="cred-key">Username</span>
+      <span class="cred-val">${escapeHtml(lastCreds.username)}</span>
+      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.username)}">Copy</button>
+    </div>
+    <div class="cred-line">
+      <span class="cred-key">Password</span>
+      <span class="cred-val">${escapeHtml(lastCreds.password)}</span>
+      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.password)}">Copy</button>
+    </div>`;
+  document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
+    btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
+  });
+  window.scrollTo({ top: 0 });
+}
+
+function copyAllCreds() {
+  if (!lastCreds) return;
+  const text = [
+    `Values Align App — sign-in details for ${lastCreds.orgName}`,
+    '',
+    `Sign in:  ${lastCreds.signin}`,
+    `Username: ${lastCreds.username}`,
+    `Password: ${lastCreds.password}`,
+    '',
+    'Everyone at your organization uses this one shared login.'
+  ].join('\n');
+  copyText(text, $('btn-copy-all'));
+}
+
+async function copyText(text, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; }
+  catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    } catch (e2) { ok = false; }
+  }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = ok ? 'Copied!' : 'Copy failed';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1600);
+  }
+}
+</script>
+</body>
+</html>

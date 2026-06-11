@@ -85,6 +85,16 @@ The system prompt lives inside the `generate()` function in `index.html`. Key ru
 
 ## Change History
 
+### Session: June 11, 2026
+
+**Added super-admin onboarding console (`superadmin.html`):**
+- New page for KLG-side administrators: sign in with email/password, see every onboarded organization, and onboard new ones through a 5-step wizard (organization → branding → values with optional Spanish → shared login → review)
+- Wizard auto-generates a strong password and shows the credentials once, with copy buttons, after creation
+- New API route `api/superadmin/orgs.js` (GET list / POST create). POST creates the `orgs` row, the shared auth user (`<username>+placeholder@valuesalign.app`), and the `org_members` link, rolling back on partial failure
+- Access is gated server-side by `requireSuperAdmin` (new in `lib/auth.js`): the auth user must have `app_metadata.is_super_admin = true`, which only the service role can set — org accounts get a 403
+- New `scripts/create-super-admin.js` — one-time script to create (or upgrade) a super-admin account: `node scripts/create-super-admin.js <email> [password]`
+- `vercel.json` + `dev-server.js`: `/superadmin.html` excluded from the SPA rewrite so the page is served directly
+
 ### Session: April 15, 2026
 
 **Changes made to `index.html`:**
