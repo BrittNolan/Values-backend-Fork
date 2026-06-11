@@ -270,7 +270,6 @@ body.booted .boot-splash { display: none; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
             Email the invite
           </button>
-          <button class="btn-ghost" id="btn-copy-email">Copy email text</button>
           <button class="btn-ghost" id="btn-success-done">Done</button>
         </div>
       </div>
@@ -320,9 +319,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-email-invite').addEventListener('click', () => {
     const url = $('btn-email-invite').dataset.mailto;
     if (url) window.location.href = url;
-  });
-  $('btn-copy-email').addEventListener('click', () => {
-    if (lastCreds && lastCreds.setupLink) copyText(inviteEmailBody(), $('btn-copy-email'));
   });
   $('btn-success-done').addEventListener('click', () => { lastCreds = null; showHome(); });
 
@@ -938,14 +934,11 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
     : '<strong>Save this password now.</strong> The set-password link couldn’t be generated this time, so the password is the organization’s only key — it can’t be looked up later.';
 
   const emailBtn = $('btn-email-invite');
-  const copyEmailBtn = $('btn-copy-email');
   if (lastCreds.setupLink) {
     emailBtn.style.display = '';
-    copyEmailBtn.style.display = '';
     emailBtn.dataset.mailto = `mailto:?subject=${encodeURIComponent('Welcome to Values Align App')}&body=${encodeURIComponent(inviteEmailBody())}`;
   } else {
     emailBtn.style.display = 'none';
-    copyEmailBtn.style.display = 'none';
     delete emailBtn.dataset.mailto;
   }
 
