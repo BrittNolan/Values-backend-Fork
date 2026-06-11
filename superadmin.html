@@ -266,10 +266,7 @@ body.booted .boot-splash { display: none; }
         <div id="success-creds"></div>
         <div class="warn-box" id="success-warn"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn-primary" id="btn-email-invite">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-            Email the invite
-          </button>
+          <button class="btn-primary" id="btn-copy-invite">Copy invite email</button>
           <button class="btn-ghost" id="btn-success-done">Done</button>
         </div>
       </div>
@@ -316,9 +313,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('wiz-cancel').addEventListener('click', cancelWizard);
   $('wiz-back').addEventListener('click', () => navStep(-1));
   $('wiz-next').addEventListener('click', () => navStep(1));
-  $('btn-email-invite').addEventListener('click', () => {
-    const url = $('btn-email-invite').dataset.mailto;
-    if (url) window.location.href = url;
+  $('btn-copy-invite').addEventListener('click', () => {
+    if (lastCreds && lastCreds.setupLink) copyText(inviteEmailBody(), $('btn-copy-invite'));
   });
   $('btn-success-done').addEventListener('click', () => { lastCreds = null; showHome(); });
 
@@ -895,7 +891,7 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
   $('success-view').style.display = 'block';
   $('success-title').textContent = `${org.name} is ready`;
   $('success-sub').textContent = (lastCreds.setupLink
-    ? 'Click “Email the invite” below — the message is pre-written, you just add their address. They’ll choose their own password.'
+    ? 'Click “Copy invite email” below and paste it into an email to your contact — the message is pre-written. They’ll choose their own password.'
     : 'Share these sign-in details with the organization.')
     + (hasHandbook ? ' Their handbook is loaded, so guidance will cite their policies.' : '');
 
@@ -933,14 +929,7 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
     ? 'The link works once and expires after about a day. If it goes unused, a fresh one can be issued.'
     : '<strong>Save this password now.</strong> The set-password link couldn’t be generated this time, so the password is the organization’s only key — it can’t be looked up later.';
 
-  const emailBtn = $('btn-email-invite');
-  if (lastCreds.setupLink) {
-    emailBtn.style.display = '';
-    emailBtn.dataset.mailto = `mailto:?subject=${encodeURIComponent('Welcome to Values Align App')}&body=${encodeURIComponent(inviteEmailBody())}`;
-  } else {
-    emailBtn.style.display = 'none';
-    delete emailBtn.dataset.mailto;
-  }
+  $('btn-copy-invite').style.display = lastCreds.setupLink ? '' : 'none';
 
   document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
     btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
