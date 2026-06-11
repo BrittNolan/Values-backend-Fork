@@ -548,18 +548,13 @@ function renderStep() {
       <div class="w-field">
         <div class="field-label">Sign-in username</div>
         <input type="text" class="w-input" id="f-username" placeholder="e.g. lifemoves" maxlength="40" value="${escapeAttr(wiz.username)}" />
-        <div class="w-hint">Lowercase letters, numbers, and hyphens. Everyone at the organization signs in with this one username &mdash; their login email will be <code id="email-preview">&hellip;</code></div>
+        <div class="w-hint">Lowercase letters, numbers, and hyphens &mdash; short and easy to type, like <code>lifemoves</code>. This is the one shared username everyone at this organization will use to sign in.</div>
       </div>`;
     const nameEl = $('f-name'), userEl = $('f-username');
-    const updatePreview = () => {
-      const u = userEl.value.trim().toLowerCase();
-      $('email-preview').textContent = u ? `${u}+placeholder@valuesalign.app` : '…';
-    };
     nameEl.addEventListener('input', () => {
-      if (!wiz.usernameTouched) { userEl.value = slugify(nameEl.value); updatePreview(); }
+      if (!wiz.usernameTouched) userEl.value = slugify(nameEl.value);
     });
-    userEl.addEventListener('input', () => { wiz.usernameTouched = userEl.value.length > 0; updatePreview(); });
-    updatePreview();
+    userEl.addEventListener('input', () => { wiz.usernameTouched = userEl.value.length > 0; });
     nameEl.focus();
 
   } else if (wiz.step === 1) {
