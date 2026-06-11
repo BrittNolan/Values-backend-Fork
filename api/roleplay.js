@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { ORG_HANDBOOK } from '../lib/handbook.js'
+import { getServerSupabase } from '../lib/supabase-server.js'
 import { requireAuth } from '../lib/auth.js'
 import { parseOr400, roleplaySchema } from '../lib/validation.js'
 
@@ -209,7 +209,7 @@ Return ONLY the staff member's spoken words as plain text. No JSON, no quotation
 // ============================================================
 // ENGINE 2 — COACH / EVALUATOR (the parallel evaluation track)
 // ============================================================
-const COACH_SYSTEM_PROMPT = (mode, scenario, valuesAnalysis) => `You are a leadership coach running a real-time evaluation track alongside a role-play simulation for a tool called Values Lab. You do NOT speak to the staff member and you do NOT play any character. Your only job is to evaluate the LEADER's most recent message and give them trauma-informed feedback.
+const COACH_SYSTEM_PROMPT = (mode, scenario, valuesAnalysis, handbookBlock) => `You are a leadership coach running a real-time evaluation track alongside a role-play simulation for a tool called Values Lab. You do NOT speak to the staff member and you do NOT play any character. Your only job is to evaluate the LEADER's most recent message and give them trauma-informed feedback.
 
 === THE SCENARIO ===
 ${scenario}
@@ -225,10 +225,7 @@ Coaching rules:
 - Never shame the leader, even when their response was off-track. Name the consequence, not their character.
 - Always include a specific "try this" reframe as a sample alternative phrasing.
 - Reference organizational values when the leader's response either upheld or strained them.
-
-=== HANDBOOK REFERENCE (optional, for context) ===
-${ORG_HANDBOOK.organization} handbook is available. Only reference policy when directly relevant. The role play is primarily a values-and-language exercise, not a policy briefing.
-
+${handbookBlock}
 === EVALUATION SCALE ===
 Rate the leader's most recent message on this scale:
 
@@ -276,7 +273,7 @@ export default async function handler(req, res) {
       via: screen.via,
       category: screen.category || null,
       mode,
-      organization: ORG_HANDBOOK.organization
+      organization: ctx.orgName || null
     }))
     // Suppress the engines entirely and return the reroute. `error` carries the
     // message so the current front end displays it and halts; `rerouted` is the
@@ -311,10 +308,29 @@ export default async function handler(req, res) {
   // ---- Build COACH engine input (only when there is a leader message to grade) ----
   let coachPromise = Promise.resolve(null)
   if (lastLeader) {
+    // Mention the org's own handbook only when one is actually on file.
+    // Fail open: a lookup error just omits the block and coaching proceeds.
+    let handbookBlock = ''
+    try {
+      const { data: hb } = await getServerSupabase()
+        .from('handbooks')
+        .select('org_name')
+        .eq('org_id', ctx.orgId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (hb) {
+        handbookBlock = `
+=== HANDBOOK REFERENCE (optional, for context) ===
+The ${ctx.orgName || hb.org_name || 'organization'} employee handbook is on file for this organization. Only reference policy when directly relevant. The role play is primarily a values-and-language exercise, not a policy briefing.
+`
+      }
+    } catch (e) {
+      console.warn('Roleplay handbook lookup failed (continuing without):', e.message)
+    }
     const transcript = conversation
       .map(t => `${t.role === 'leader' ? 'LEADER' : 'STAFF MEMBER'}: ${t.text}`)
       .join('\n')
-    const coachSystem = COACH_SYSTEM_PROMPT(mode, scenario, values)
+    const coachSystem = COACH_SYSTEM_PROMPT(mode, scenario, values, handbookBlock)
     const coachMessages = [{
       role: 'user',
       content: `Here is the role-play conversation so far:\n\n${transcript}\n\nEvaluate the LEADER's most recent message:\n"${lastLeader.text}"\n\nReturn JSON only.`

@@ -136,6 +136,13 @@ body.booted .boot-splash { display: none; }
 .es-fields { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border2); }
 .value-card.has-es .es-fields { display: block; }
 
+.format-guide { border: 1px solid var(--border2); background: var(--gold-pale); border-radius: 12px; padding: 14px 16px; margin-bottom: 1.1rem; }
+.format-guide-title { font-size: 11px; font-weight: 500; color: var(--amber); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+.format-guide ul { margin: 0 0 10px 18px; padding: 0; }
+.format-guide li { font-size: 12.5px; color: var(--text2); font-weight: 300; line-height: 1.6; }
+.format-guide code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: var(--white); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.format-guide pre { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; color: var(--text2); line-height: 1.5; margin: 0; }
+
 .pw-row { display: flex; gap: 10px; align-items: center; }
 .pw-row .w-input { font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.04em; }
 .cred-line { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
@@ -256,7 +263,7 @@ body.booted .boot-splash { display: none; }
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2d7a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
         <div class="success-title" id="success-title">Organization created</div>
-        <div class="success-sub">Share these sign-in details with the organization. Everyone there uses this one shared login.</div>
+        <div class="success-sub" id="success-sub">Share these sign-in details with the organization. Everyone there uses this one shared login.</div>
         <div id="success-creds"></div>
         <div class="warn-box"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
@@ -281,7 +288,7 @@ let lastCreds = null;
 
 const $ = id => document.getElementById(id);
 
-const STEPS = ['Organization', 'Branding', 'Values', 'Login', 'Review'];
+const STEPS = ['Organization', 'Branding', 'Values', 'Handbook', 'Login', 'Review'];
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
 function escapeHtml(s) {
@@ -476,6 +483,7 @@ function startWizard() {
     name: '', username: '', usernameTouched: false,
     primary: '#1B2A4A', accent: '#C9A84C', logo: '',
     values: [blankValue()],
+    hbPolicies: '', hbContact: '', hbVersion: '',
     password: ''
   };
   $('home-view').style.display = 'none';
@@ -486,7 +494,7 @@ function startWizard() {
 
 function wizardDirty() {
   if (!wiz) return false;
-  return !!(wiz.name || wiz.username || wiz.logo || wiz.values.some(v => v.name || v.definition));
+  return !!(wiz.name || wiz.username || wiz.logo || wiz.hbPolicies || wiz.values.some(v => v.name || v.definition));
 }
 
 function cancelWizard() {
@@ -607,6 +615,47 @@ function renderStep() {
     });
 
   } else if (wiz.step === 3) {
+    body.innerHTML = `
+      <div class="w-section-title">Employee handbook (optional &mdash; most companies start without one)</div>
+      <div class="w-hint" style="margin:-6px 0 14px;">When a handbook is on file, the app's guidance also cites this company’s specific policies by name and points leaders to their HR contact. Skip this and they simply get values-based guidance, which works well on its own &mdash; a handbook can always be loaded later.</div>
+      <div class="format-guide">
+        <div class="format-guide-title">Format that works best</div>
+        <ul>
+          <li>One section per policy: <code>=== POLICY NAME ===</code> on its own line, then a short plain-English paragraph.</li>
+          <li>Keep the concrete numbers &mdash; hours, days, notice deadlines, eligibility.</li>
+          <li>Only people-management policies (attendance, sick leave, PTO, leaves, accommodations, harassment &amp; complaints, discipline, timekeeping&hellip;). Aim for roughly 20 short sections.</li>
+          <li>If a policy was revised, paste the current version only.</li>
+        </ul>
+        <pre>=== PAID SICK LEAVE ===
+All employees receive 5 sick days / 40 hours on January 1 each year.
+Unused sick leave does not roll over. Notify your supervisor as soon
+as possible; a doctor's note may be required after 3+ days.</pre>
+      </div>
+      <div class="w-field">
+        <div class="field-label">Handbook policy text</div>
+        <textarea class="w-textarea" id="f-hb-policies" rows="12" maxlength="60000" placeholder="=== POLICY NAME ===&#10;Short plain-English summary of the policy&hellip;">${escapeHtml(wiz.hbPolicies)}</textarea>
+        <div class="w-hint" id="hb-counter"></div>
+      </div>
+      <div class="w-field">
+        <div class="field-label">HR contact (optional)</div>
+        <input type="text" class="w-input" id="f-hb-contact" maxlength="200" placeholder="e.g. Jane Smith, hr@organization.org" value="${escapeAttr(wiz.hbContact)}" />
+      </div>
+      <div class="w-field">
+        <div class="field-label">Version label (optional)</div>
+        <input type="text" class="w-input" id="f-hb-version" maxlength="200" placeholder="e.g. 2026 Employee Handbook" value="${escapeAttr(wiz.hbVersion)}" />
+      </div>`;
+    const ta = $('f-hb-policies');
+    const updateCounter = () => {
+      const t = ta.value;
+      const sections = (t.match(/^===.+===\s*$/gm) || []).length;
+      $('hb-counter').textContent = t.trim()
+        ? `${t.length.toLocaleString()} / 60,000 characters · ${sections} section${sections !== 1 ? 's' : ''} detected`
+        : 'Leave empty to skip this step.';
+    };
+    ta.addEventListener('input', updateCounter);
+    updateCounter();
+
+  } else if (wiz.step === 4) {
     if (!wiz.password) wiz.password = genPassword();
     body.innerHTML = `
       <div class="w-section-title">Shared login for the organization</div>
@@ -624,7 +673,12 @@ function renderStep() {
       </div>`;
     $('btn-regen').addEventListener('click', () => { $('f-password').value = genPassword(); });
 
-  } else if (wiz.step === 4) {
+  } else if (wiz.step === 5) {
+    const hbText = wiz.hbPolicies.trim();
+    const hbSections = (hbText.match(/^===.+===\s*$/gm) || []).length;
+    const hbSummary = hbText
+      ? `Included &mdash; ${hbSections} section${hbSections !== 1 ? 's' : ''}, ${hbText.length.toLocaleString()} characters${wiz.hbVersion ? ' (' + escapeHtml(wiz.hbVersion) + ')' : ''}${hbSections === 0 ? ' &mdash; <span style="color:var(--amber);">no === SECTION === headers detected; double-check the format</span>' : ''}`
+      : 'None &mdash; values-based guidance only';
     const valsHtml = wiz.values.map(v => `
       <div class="review-val">
         <div class="review-val-name">${escapeHtml(v.name)}</div>
@@ -638,6 +692,7 @@ function renderStep() {
         <div class="review-kv"><b>Username</b> ${escapeHtml(wiz.username)}</div>
         <div class="review-kv"><b>Colors</b> <span><span class="swatch-dot" style="background:${escapeAttr(wiz.primary)};"></span>${escapeHtml(wiz.primary)} &nbsp; <span class="swatch-dot" style="background:${escapeAttr(wiz.accent)};"></span>${escapeHtml(wiz.accent)}</span></div>
         <div class="review-kv"><b>Logo</b> ${wiz.logo ? escapeHtml(wiz.logo) : 'None'}</div>
+        <div class="review-kv"><b>Handbook</b> <span>${hbSummary}</span></div>
         <div class="review-kv"><b>Password</b> <span style="font-family:ui-monospace,Consolas,monospace;">${escapeHtml(wiz.password)}</span></div>
       </div>
       <div class="review-block">
@@ -739,6 +794,19 @@ function collectStep(validate) {
       }));
     }
   } else if (wiz.step === 3) {
+    const p = $('f-hb-policies'), c = $('f-hb-contact'), v = $('f-hb-version');
+    if (p) wiz.hbPolicies = p.value;
+    if (c) wiz.hbContact = c.value.trim();
+    if (v) wiz.hbVersion = v.value.trim();
+    if (validate) {
+      if (!wiz.hbPolicies.trim() && (wiz.hbContact || wiz.hbVersion)) {
+        return 'Add the handbook policy text too — or clear the HR contact and version fields to skip this step.';
+      }
+      if (wiz.hbPolicies.length > 60000) {
+        return 'Handbook policy text is too long (max 60,000 characters).';
+      }
+    }
+  } else if (wiz.step === 4) {
     const pw = $('f-password');
     if (pw) wiz.password = pw.value;
     if (validate && (wiz.password.length < 10 || wiz.password.length > 72)) {
@@ -792,6 +860,11 @@ async function submitCreate() {
         if (v.definition_es) out.definition_es = v.definition_es;
         return out;
       }),
+      handbook: wiz.hbPolicies.trim() ? {
+        policies: wiz.hbPolicies.trim(),
+        hr_contact: wiz.hbContact,
+        version: wiz.hbVersion
+      } : null,
       password: wiz.password
     };
     const r = await fetch('/api/superadmin/orgs', {
@@ -810,7 +883,7 @@ async function submitCreate() {
       setWizErr(msg);
       return;
     }
-    showSuccess(data.org, data.credentials);
+    showSuccess(data.org, data.credentials, data.handbook);
   } catch (e) {
     setWizErr('Connection error. Nothing was created — please try again.');
   } finally {
@@ -822,12 +895,14 @@ async function submitCreate() {
 // ─────────────────────────────────────────────
 // Success screen
 // ─────────────────────────────────────────────
-function showSuccess(org, creds) {
+function showSuccess(org, creds, hasHandbook) {
   wiz = null;
   lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password };
   $('wizard-view').style.display = 'none';
   $('success-view').style.display = 'block';
   $('success-title').textContent = `${org.name} is ready`;
+  $('success-sub').textContent = 'Share these sign-in details with the organization. Everyone there uses this one shared login.'
+    + (hasHandbook ? ' Their handbook is loaded, so guidance will cite their policies.' : '');
   $('success-creds').innerHTML = `
     <div class="cred-line">
       <span class="cred-key">Sign-in page</span>

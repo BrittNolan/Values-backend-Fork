@@ -95,6 +95,16 @@ The system prompt lives inside the `generate()` function in `index.html`. Key ru
 - New `scripts/create-super-admin.js` — one-time script to create (or upgrade) a super-admin account: `node scripts/create-super-admin.js <email> [password]`
 - `vercel.json` + `dev-server.js`: `/superadmin.html` excluded from the SPA rewrite so the page is served directly
 
+**Added optional Handbook step to the onboarding wizard (now 6 steps):**
+- New step between Values and Login: paste the company's condensed policy text (`=== POLICY NAME ===` sections), optional HR contact and version label — or skip entirely
+- The screen includes the format rules and an example, plus a live character/section counter; review screen summarizes what will be saved and warns when no section headers are detected
+- `api/superadmin/orgs.js` POST now inserts the `handbooks` row (`is_active: true`) when provided — `/api/analyze` picks it up automatically — and rolls it back with the rest on partial failure
+
+**Role Play handbook made per-organization (`api/roleplay.js`):**
+- The coach prompt previously told the AI the LifeMoves handbook was available for EVERY org (hardcoded import from `lib/handbook.js`). It now checks the signed-in org's own `handbooks` row: orgs with one get a correctly-named reference, orgs without get no handbook block at all (lookup is fail-open)
+- Compliance log now records the actual signed-in org name instead of always "LifeMoves"
+- `lib/handbook.js` is no longer imported anywhere; kept as reference material for the LifeMoves handbook content
+
 ### Session: April 15, 2026
 
 **Changes made to `index.html`:**

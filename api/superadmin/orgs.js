@@ -97,14 +97,29 @@ function validatePayload(body) {
     return { error: 'Password must be 10-72 characters.' }
   }
 
-  return { org: { name, username, values, primary_color, accent_color, logo_url }, password }
+  // Optional handbook. Only saved when policy text is present; HR contact and
+  // version label are decorations on it.
+  let handbook = null
+  if (body.handbook && typeof body.handbook === 'object') {
+    const policies = typeof body.handbook.policies === 'string' ? body.handbook.policies.trim() : ''
+    const hr_contact = typeof body.handbook.hr_contact === 'string' ? body.handbook.hr_contact.trim() : ''
+    const version = typeof body.handbook.version === 'string' ? body.handbook.version.trim() : ''
+    if (policies) {
+      if (policies.length > 60000) return { error: 'Handbook policy text is too long (max 60,000 characters).' }
+      if (hr_contact.length > 200) return { error: 'HR contact is too long (max 200 characters).' }
+      if (version.length > 200) return { error: 'Handbook version label is too long (max 200 characters).' }
+      handbook = { policies, hr_contact: hr_contact || null, handbook_version: version || null }
+    }
+  }
+
+  return { org: { name, username, values, primary_color, accent_color, logo_url }, password, handbook }
 }
 
 async function createOrg(req, res) {
   const parsed = validatePayload(req.body)
   if (parsed.error) return res.status(400).json({ error: parsed.error })
 
-  const { org, password } = parsed
+  const { org, password, handbook } = parsed
   const supa = getServerSupabase()
 
   // Username drives both the orgs row and the login email, so reject duplicates upfront.
@@ -131,7 +146,17 @@ async function createOrg(req, res) {
     return res.status(500).json({ error: 'Could not create the organization.' })
   }
 
-  const rollbackOrg = async () => {
+  // Best-effort rollback. Order matters: the handbooks row references the org,
+  // so it must go before the org row can be deleted.
+  const rollback = async ({ handbookRow = false, userId = null } = {}) => {
+    if (handbookRow) {
+      const { error: hbErr } = await supa.from('handbooks').delete().eq('org_id', inserted.id)
+      if (hbErr) console.error('Superadmin rollback (handbook delete) failed:', hbErr)
+    }
+    if (userId) {
+      const { error: userErr } = await supa.auth.admin.deleteUser(userId)
+      if (userErr) console.error('Superadmin rollback (user delete) failed:', userErr)
+    }
     const { error: delErr } = await supa.from('orgs').delete().eq('id', inserted.id)
     if (delErr) console.error('Superadmin rollback (org delete) failed:', delErr)
   }
@@ -156,7 +181,7 @@ async function createOrg(req, res) {
       const orphan = list?.users?.find(u => u.email === email)
       if (listErr || !orphan) {
         console.error('Superadmin orphan user lookup failed:', listErr)
-        await rollbackOrg()
+        await rollback()
         return res.status(500).json({ error: 'Could not create the login account.' })
       }
       const { error: updErr } = await supa.auth.admin.updateUserById(orphan.id, {
@@ -165,13 +190,13 @@ async function createOrg(req, res) {
       })
       if (updErr) {
         console.error('Superadmin orphan user update failed:', updErr)
-        await rollbackOrg()
+        await rollback()
         return res.status(500).json({ error: 'Could not create the login account.' })
       }
       userId = orphan.id
     } else {
       console.error('Superadmin user create error:', createErr)
-      await rollbackOrg()
+      await rollback()
       return res.status(500).json({ error: 'Could not create the login account.' })
     }
   } else {
@@ -179,22 +204,39 @@ async function createOrg(req, res) {
     createdNewUser = true
   }
 
+  // Optional handbook row. /api/analyze picks it up automatically (org_id +
+  // is_active), so nothing else needs to know about it.
+  let handbookInserted = false
+  if (handbook) {
+    const { error: hbErr } = await supa.from('handbooks').insert({
+      org_id: inserted.id,
+      org_name: org.name,
+      policies: handbook.policies,
+      hr_contact: handbook.hr_contact,
+      handbook_version: handbook.handbook_version,
+      is_active: true
+    })
+    if (hbErr) {
+      console.error('Superadmin handbook insert error:', hbErr)
+      await rollback({ userId: createdNewUser ? userId : null })
+      return res.status(500).json({ error: 'Could not save the handbook.' })
+    }
+    handbookInserted = true
+  }
+
   const { error: memErr } = await supa
     .from('org_members')
     .upsert({ user_id: userId, org_id: inserted.id, role: 'admin' })
   if (memErr) {
     console.error('Superadmin membership link error:', memErr)
-    if (createdNewUser) {
-      const { error: delUserErr } = await supa.auth.admin.deleteUser(userId)
-      if (delUserErr) console.error('Superadmin rollback (user delete) failed:', delUserErr)
-    }
-    await rollbackOrg()
+    await rollback({ handbookRow: handbookInserted, userId: createdNewUser ? userId : null })
     return res.status(500).json({ error: 'Could not link the login account to the organization.' })
   }
 
   return res.status(201).json({
     ok: true,
     org: inserted,
+    handbook: handbookInserted,
     credentials: { username: org.username, email, password }
   })
 }
