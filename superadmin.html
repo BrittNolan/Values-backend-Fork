@@ -143,8 +143,6 @@ body.booted .boot-splash { display: none; }
 .format-guide code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: var(--white); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
 .format-guide pre { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; color: var(--text2); line-height: 1.5; margin: 0; }
 
-.pw-row { display: flex; gap: 10px; align-items: center; }
-.pw-row .w-input { font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.04em; }
 .cred-line { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
 .cred-line:last-child { border-bottom: none; }
 .cred-key { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; min-width: 110px; flex-shrink: 0; }
@@ -288,7 +286,7 @@ let lastCreds = null;
 
 const $ = id => document.getElementById(id);
 
-const STEPS = ['Organization', 'Branding', 'Values', 'Handbook', 'Login', 'Review'];
+const STEPS = ['Organization', 'Branding', 'Values', 'Handbook', 'Review'];
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
 function escapeHtml(s) {
@@ -484,7 +482,9 @@ function startWizard() {
     primary: '#1B2A4A', accent: '#C9A84C', logo: '',
     values: [blankValue()],
     hbPolicies: '', hbContact: '', hbVersion: '',
-    password: ''
+    // Backup password, generated silently. The client normally replaces it
+    // via the set-password link; this surfaces only on the success screen.
+    password: genPassword()
   };
   $('home-view').style.display = 'none';
   $('success-view').style.display = 'none';
@@ -651,24 +651,6 @@ as possible; a doctor's note may be required after 3+ days.</pre>
     updateCounter();
 
   } else if (wiz.step === 4) {
-    if (!wiz.password) wiz.password = genPassword();
-    body.innerHTML = `
-      <div class="w-section-title">Shared login for the organization</div>
-      <div class="w-field">
-        <div class="field-label">Username</div>
-        <div class="cred-val" style="padding:4px 0;">${escapeHtml(wiz.username)}</div>
-      </div>
-      <div class="w-field">
-        <div class="field-label">Password</div>
-        <div class="pw-row">
-          <input type="text" class="w-input" id="f-password" maxlength="72" value="${escapeAttr(wiz.password)}" />
-          <button class="btn-ghost" id="btn-regen" type="button" style="flex-shrink:0;">Regenerate</button>
-        </div>
-        <div class="w-hint">At least 10 characters. The generated one is strong &mdash; you’ll get a copy button at the end to share it with the organization.</div>
-      </div>`;
-    $('btn-regen').addEventListener('click', () => { $('f-password').value = genPassword(); });
-
-  } else if (wiz.step === 5) {
     const hbText = wiz.hbPolicies.trim();
     const hbSections = (hbText.match(/^===.+===\s*$/gm) || []).length;
     const hbSummary = hbText
@@ -688,7 +670,6 @@ as possible; a doctor's note may be required after 3+ days.</pre>
         <div class="review-kv"><b>Colors</b> <span><span class="swatch-dot" style="background:${escapeAttr(wiz.primary)};"></span>${escapeHtml(wiz.primary)} &nbsp; <span class="swatch-dot" style="background:${escapeAttr(wiz.accent)};"></span>${escapeHtml(wiz.accent)}</span></div>
         <div class="review-kv"><b>Logo</b> ${wiz.logo ? escapeHtml(wiz.logo) : 'None'}</div>
         <div class="review-kv"><b>Handbook</b> <span>${hbSummary}</span></div>
-        <div class="review-kv"><b>Password</b> <span style="font-family:ui-monospace,Consolas,monospace;">${escapeHtml(wiz.password)}</span></div>
       </div>
       <div class="review-block">
         <div class="field-label">Values (${wiz.values.length})</div>
@@ -801,12 +782,6 @@ function collectStep(validate) {
         return 'Handbook policy text is too long (max 60,000 characters).';
       }
     }
-  } else if (wiz.step === 4) {
-    const pw = $('f-password');
-    if (pw) wiz.password = pw.value;
-    if (validate && (wiz.password.length < 10 || wiz.password.length > 72)) {
-      return 'Password must be 10–72 characters.';
-    }
   }
   return null;
 }
@@ -916,12 +891,12 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.username)}">Copy</button>
     </div>${linkRow}
     <div class="cred-line">
-      <span class="cred-key">Password</span>
+      <span class="cred-key">Backup password</span>
       <span class="cred-val">${escapeHtml(lastCreds.password)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.password)}">Copy</button>
     </div>`;
   $('success-warn').innerHTML = lastCreds.setupLink
-    ? '<strong>Recommended: email them the set-password link instead of the password.</strong> They click it and choose their own — nothing secret travels by email. The link works once and expires after about a day; if it goes unused, a fresh one can be issued behind the scenes. The password above also works, but it can’t be looked up later, so save it now if you plan to use it.'
+    ? '<strong>Email them the set-password link — they’ll choose their own password.</strong> Nothing secret travels by email; the link works once and expires after about a day. The backup password is your safety net if the link goes unused (send it by text, not email) — it can’t be looked up later, so save it now if you think you’ll need it.'
     : '<strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it\'s lost, it can be reset, but it cannot be recovered.';
   document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
     btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));

@@ -106,6 +106,7 @@ The system prompt lives inside the `generate()` function in `index.html`. Key ru
 - New `lib/setup-link.js` (recovery-token link builder); `api/superadmin/orgs.js` returns `setup_link` on creation (fail-soft)
 - Links are single-use and expire per the Supabase "Email OTP expiry" dashboard setting (raised to 24h)
 - Scope note: links exist ONLY for new onboardings by design. A per-org "Password link" button for existing orgs was briefly added and then removed unshipped-to-clients — that capability is a separate paid feature to be built when the client requests it
+- Wizard simplified to 5 steps: the Login screen was removed. A backup password is generated silently and appears only on the success screen (labeled "Backup password"), since clients normally set their own via the link
 
 **Single front door for admins (`org-loader.js`):**
 - Super admins now sign in at the main app (`/`) like everyone else and are automatically redirected to `/superadmin.html` — both on fresh login and when returning with an existing session. Org logins are unaffected.
