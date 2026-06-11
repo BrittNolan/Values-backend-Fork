@@ -1,5 +1,6 @@
 import { requireSuperAdmin } from '../../lib/auth.js'
 import { getServerSupabase } from '../../lib/supabase-server.js'
+import { generateSetupLink, requestOrigin } from '../../lib/setup-link.js'
 
 // Usernames become the local part of the placeholder login email
 // (<username>+placeholder@valuesalign.app), so keep them email-safe:
@@ -233,10 +234,15 @@ async function createOrg(req, res) {
     return res.status(500).json({ error: 'Could not link the login account to the organization.' })
   }
 
+  // One-time "choose your password" link. Fail-soft: if generation hiccups,
+  // the org is still created and the console falls back to password-only.
+  const setupLink = await generateSetupLink(supa, email, requestOrigin(req))
+
   return res.status(201).json({
     ok: true,
     org: inserted,
     handbook: handbookInserted,
+    setup_link: setupLink,
     credentials: { username: org.username, email, password }
   })
 }

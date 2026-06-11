@@ -153,6 +153,17 @@ body.booted .boot-splash { display: none; }
 .btn-copy:hover { border-color: var(--navy); color: var(--navy); }
 .btn-copy.copied { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
 
+.btn-mini { flex-shrink: 0; margin-left: 10px; background: transparent; border: 1px solid var(--border2); border-radius: 6px; font-size: 11px; padding: 6px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); transition: all 0.15s; white-space: nowrap; }
+.btn-mini:hover { border-color: var(--navy); color: var(--navy); }
+.btn-mini:disabled { opacity: 0.5; cursor: wait; }
+
+.link-modal-overlay { position: fixed; inset: 0; background: rgba(20,28,48,0.6); display: flex; align-items: center; justify-content: center; z-index: 9000; padding: 1.5rem; }
+.link-modal { background: var(--white); border-radius: var(--rl); max-width: 600px; width: 100%; padding: 1.75rem; }
+.link-modal-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.link-modal-sub { font-size: 12.5px; color: var(--text3); font-weight: 300; line-height: 1.6; margin-bottom: 1rem; }
+.link-box { font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--r); padding: 12px 14px; word-break: break-all; color: var(--text2); line-height: 1.5; margin-bottom: 1rem; }
+.link-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
 .review-block { margin-bottom: 1.25rem; }
 .review-kv { display: flex; gap: 10px; font-size: 13.5px; padding: 6px 0; font-weight: 300; color: var(--text2); }
 .review-kv b { font-weight: 500; color: var(--text); min-width: 110px; flex-shrink: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding-top: 1px; }
@@ -265,7 +276,7 @@ body.booted .boot-splash { display: none; }
         <div class="success-title" id="success-title">Organization created</div>
         <div class="success-sub" id="success-sub">Share these sign-in details with the organization. Everyone there uses this one shared login.</div>
         <div id="success-creds"></div>
-        <div class="warn-box"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
+        <div class="warn-box" id="success-warn"><strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it's lost, it can be reset, but it cannot be recovered.</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
           <button class="btn-primary" id="btn-copy-all">Copy all details</button>
           <button class="btn-ghost" id="btn-success-done">Done</button>
@@ -422,8 +433,60 @@ function renderOrgs(orgs) {
           <div class="org-row-meta">username: ${escapeHtml(o.username)} &middot; ${o.values_count} value${o.values_count !== 1 ? 's' : ''}${o.has_logo ? ' &middot; logo' : ''}</div>
         </div>
         <div class="org-row-right">added<br>${escapeHtml(date)}</div>
+        <button class="btn-mini" data-link-org="${escapeAttr(o.id)}" data-link-name="${escapeAttr(o.name)}" title="Make a one-time link this organization can use to set a new password">Password link</button>
       </div>`;
   }).join('');
+
+  list.querySelectorAll('[data-link-org]').forEach(btn => {
+    btn.addEventListener('click', () => mintSetupLink(btn.dataset.linkOrg, btn.dataset.linkName, btn));
+  });
+}
+
+// Mint a fresh one-time set-password link for an existing org. Also the
+// answer to "the client lost their password" — no old password needed.
+async function mintSetupLink(orgId, orgName, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Making…';
+  try {
+    const r = await fetch('/api/superadmin/setup-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ org_id: orgId })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.link) {
+      btn.textContent = 'Failed — try again';
+      setTimeout(() => { btn.textContent = orig; }, 2200);
+      return;
+    }
+    showLinkModal(orgName, data.link);
+    btn.textContent = orig;
+  } catch (e) {
+    btn.textContent = 'Failed — try again';
+    setTimeout(() => { btn.textContent = orig; }, 2200);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showLinkModal(orgName, link) {
+  const overlay = document.createElement('div');
+  overlay.className = 'link-modal-overlay';
+  overlay.innerHTML = `
+    <div class="link-modal">
+      <div class="link-modal-title">Set-password link for ${escapeHtml(orgName)}</div>
+      <div class="link-modal-sub">Email this to your contact there — they'll click it and choose their own password. It works exactly once and expires if unused, and you can make a fresh one anytime. Their current password keeps working until they use the link.</div>
+      <div class="link-box">${escapeHtml(link)}</div>
+      <div class="link-modal-actions">
+        <button class="btn-ghost" data-close>Close</button>
+        <button class="btn-primary" data-copy-link>Copy link</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('[data-copy-link]').addEventListener('click', (e) => copyText(link, e.currentTarget));
+  overlay.querySelector('[data-close]').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 }
 
 async function doLogin() {
@@ -878,7 +941,7 @@ async function submitCreate() {
       setWizErr(msg);
       return;
     }
-    showSuccess(data.org, data.credentials, data.handbook);
+    showSuccess(data.org, data.credentials, data.handbook, data.setup_link);
   } catch (e) {
     setWizErr('Connection error. Nothing was created — please try again.');
   } finally {
@@ -890,14 +953,20 @@ async function submitCreate() {
 // ─────────────────────────────────────────────
 // Success screen
 // ─────────────────────────────────────────────
-function showSuccess(org, creds, hasHandbook) {
+function showSuccess(org, creds, hasHandbook, setupLink) {
   wiz = null;
-  lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password };
+  lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password, setupLink: setupLink || null };
   $('wizard-view').style.display = 'none';
   $('success-view').style.display = 'block';
   $('success-title').textContent = `${org.name} is ready`;
   $('success-sub').textContent = 'Share these sign-in details with the organization. Everyone there uses this one shared login.'
     + (hasHandbook ? ' Their handbook is loaded, so guidance will cite their policies.' : '');
+  const linkRow = lastCreds.setupLink ? `
+    <div class="cred-line">
+      <span class="cred-key">Set-password link</span>
+      <span class="cred-val" style="font-size:12px;">${escapeHtml(lastCreds.setupLink)}</span>
+      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.setupLink)}">Copy</button>
+    </div>` : '';
   $('success-creds').innerHTML = `
     <div class="cred-line">
       <span class="cred-key">Sign-in page</span>
@@ -908,12 +977,15 @@ function showSuccess(org, creds, hasHandbook) {
       <span class="cred-key">Username</span>
       <span class="cred-val">${escapeHtml(lastCreds.username)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.username)}">Copy</button>
-    </div>
+    </div>${linkRow}
     <div class="cred-line">
       <span class="cred-key">Password</span>
       <span class="cred-val">${escapeHtml(lastCreds.password)}</span>
       <button class="btn-copy" data-copy="${escapeAttr(lastCreds.password)}">Copy</button>
     </div>`;
+  $('success-warn').innerHTML = lastCreds.setupLink
+    ? '<strong>Recommended: email them the set-password link instead of the password.</strong> They click it and choose their own — nothing secret travels by email. The link works once and expires; make a fresh one anytime with the “Password link” button on the Organizations list. The password above also works, but it can’t be looked up later, so save it now if you plan to use it.'
+    : '<strong>Save these now.</strong> For security, the password is not stored anywhere you can look it up later. If it\'s lost, it can be reset, but it cannot be recovered.';
   document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
     btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
   });
@@ -922,16 +994,23 @@ function showSuccess(org, creds, hasHandbook) {
 
 function copyAllCreds() {
   if (!lastCreds) return;
-  const text = [
+  const lines = [
     `Values Align App — sign-in details for ${lastCreds.orgName}`,
     '',
-    `Sign in:  ${lastCreds.signin}`,
-    `Username: ${lastCreds.username}`,
-    `Password: ${lastCreds.password}`,
-    '',
-    'Everyone at your organization uses this one shared login.'
-  ].join('\n');
-  copyText(text, $('btn-copy-all'));
+    `Sign-in page: ${lastCreds.signin}`,
+    `Username: ${lastCreds.username}`
+  ];
+  if (lastCreds.setupLink) {
+    // Email-safe block: the link replaces the password entirely.
+    lines.push(`Choose your password: ${lastCreds.setupLink}`);
+    lines.push('');
+    lines.push('Click the link above to set your organization\'s password — it works once and expires, so use it soon (we can always send a fresh one). Everyone at your organization shares this one login.');
+  } else {
+    lines.push(`Password: ${lastCreds.password}`);
+    lines.push('');
+    lines.push('Everyone at your organization uses this one shared login.');
+  }
+  copyText(lines.join('\n'), $('btn-copy-all'));
 }
 
 async function copyText(text, btn) {

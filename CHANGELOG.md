@@ -100,6 +100,12 @@ The system prompt lives inside the `generate()` function in `index.html`. Key ru
 - The screen includes the format rules and an example, plus a live character/section counter; review screen summarizes what will be saved and warns when no section headers are detected
 - `api/superadmin/orgs.js` POST now inserts the `handbooks` row (`is_active: true`) when provided — `/api/analyze` picks it up automatically — and rolls it back with the rest on partial failure
 
+**One-time set-password links (`setup-password.html` + console support):**
+- The console now produces a one-time link per org so clients choose their own password — no secret ever travels by email. Creation success screen shows the link with an email-ready "Copy all details" block (passwordless when the link exists); every org row has a "Password link" button to mint a fresh one (also the lost-password reset path)
+- New client page `/setup-password.html`: verifies the token (`auth.verifyOtp` with `token_hash` — no Supabase redirect-allowlist needed, link lives on the app's own domain), shows a choose-your-password form personalized with the org name, then drops them into the app signed in. Used/expired links get a friendly single-use explanation
+- New `lib/setup-link.js` (recovery-token link builder) + `api/superadmin/setup-link.js` (mint for existing orgs); `api/superadmin/orgs.js` returns `setup_link` on creation (fail-soft)
+- Links are single-use and expire per the Supabase "Email OTP expiry" setting (default 1 hour — consider raising to 24h in the dashboard so emailed links survive overnight)
+
 **Single front door for admins (`org-loader.js`):**
 - Super admins now sign in at the main app (`/`) like everyone else and are automatically redirected to `/superadmin.html` — both on fresh login and when returning with an existing session. Org logins are unaffected.
 

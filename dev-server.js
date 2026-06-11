@@ -63,7 +63,7 @@ async function serveStatic(req, res) {
     res.end(await readFile(full))
   } catch {
     // SPA fallback to index.html for non-api, non-admin paths (matches vercel.json rewrite)
-    if (!rel.startsWith('/api/') && rel !== '/admin.html' && rel !== '/superadmin.html') {
+    if (!rel.startsWith('/api/') && rel !== '/admin.html' && rel !== '/superadmin.html' && rel !== '/setup-password.html') {
       try {
         res.setHeader('Content-Type', MIME['.html'])
         res.end(await readFile(path.join(ROOT, 'index.html')))

@@ -7,6 +7,6 @@
   },
   "rewrites": [
     { "source": "/api/supabase-browser.js", "destination": "/api/supabase-browser" },
-    { "source": "/((?!api/|admin\\.html|superadmin\\.html).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|admin\\.html|superadmin\\.html|setup-password\\.html).*)", "destination": "/index.html" }
   ]
 }
