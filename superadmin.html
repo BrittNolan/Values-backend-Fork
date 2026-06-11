@@ -148,9 +148,6 @@ body.booted .boot-splash { display: none; }
 .cred-line:last-child { border-bottom: none; }
 .cred-key { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; min-width: 110px; flex-shrink: 0; }
 .cred-val { font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; color: var(--text); word-break: break-all; }
-.btn-copy { margin-left: auto; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; font-size: 11px; padding: 5px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); transition: all 0.15s; }
-.btn-copy:hover { border-color: var(--navy); color: var(--navy); }
-.btn-copy.copied { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
 
 .review-block { margin-bottom: 1.25rem; }
 .review-kv { display: flex; gap: 10px; font-size: 13.5px; padding: 6px 0; font-weight: 300; color: var(--text2); }
@@ -899,19 +896,16 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
     <div class="cred-line">
       <span class="cred-key">Sign-in page</span>
       <span class="cred-val">${escapeHtml(lastCreds.signin)}</span>
-      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.signin)}">Copy</button>
     </div>`, `
     <div class="cred-line">
       <span class="cred-key">Username</span>
       <span class="cred-val">${escapeHtml(lastCreds.username)}</span>
-      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.username)}">Copy</button>
     </div>`];
   if (lastCreds.setupLink) {
     rows.push(`
     <div class="cred-line">
       <span class="cred-key">Set-password link</span>
       <span class="cred-val truncate">${escapeHtml(lastCreds.setupLink)}</span>
-      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.setupLink)}">Copy</button>
     </div>`);
   } else {
     // Rare fallback: the link couldn't be generated, so the initial password
@@ -920,7 +914,6 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
     <div class="cred-line">
       <span class="cred-key">Password</span>
       <span class="cred-val">${escapeHtml(lastCreds.password)}</span>
-      <button class="btn-copy" data-copy="${escapeAttr(lastCreds.password)}">Copy</button>
     </div>`);
   }
   $('success-creds').innerHTML = rows.join('');
@@ -930,10 +923,6 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
     : '<strong>Save this password now.</strong> The set-password link couldn’t be generated this time, so the password is the organization’s only key — it can’t be looked up later.';
 
   $('btn-copy-invite').style.display = lastCreds.setupLink ? '' : 'none';
-
-  document.querySelectorAll('#success-creds .btn-copy').forEach(btn => {
-    btn.addEventListener('click', () => copyText(btn.dataset.copy, btn));
-  });
   window.scrollTo({ top: 0 });
 }
 
