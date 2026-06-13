@@ -37,4 +37,11 @@ Thumbs.db
 load-test-results/
 *.k6-report.json
 
+# Playwright MCP browser-test artifacts (throwaway snapshots + console logs)
+.playwright-mcp/
+
+# Claude Code settings (personal dev preferences, not shared)
+.claude/settings.json
+.claude/settings.local.json
+
 .vercel
