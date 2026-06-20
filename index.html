@@ -2370,6 +2370,12 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
     <div class="fast-title" id="fast-title">What was the staff's behavior?</div>
     <div class="fast-subtitle" id="fast-subtitle">Write what you just observed. We'll respond with what to do, say, watch for, and save — in under a minute.</div>
 
+    <button type="button" class="vl-hist-trigger" id="vl-hist-trigger" style="display:none;" onclick="openScenarioHistory()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg>
+      <span class="vl-hist-label">Past scenarios</span>
+      <span class="vl-hist-count">0</span>
+    </button>
+
     <!-- Saved values bar (shown when values are stored) -->
     <div class="fast-values-bar" id="fast-values-bar" style="display:none;">
       <div class="fast-values-left">
@@ -4588,6 +4594,7 @@ function render(d) {
 
   document.getElementById('results-card').innerHTML = quickViewHTML + fullAnalysisHTML;
   document.getElementById('results-view').style.display = 'block';
+  try { if (typeof saveScenarioToHistory === 'function') saveScenarioToHistory(); } catch (e) {}
 }
 
 function switchQvTab(tab) {
@@ -5033,6 +5040,7 @@ function toggleLanguage() {
   });
   document.documentElement.lang = currentLang;
   applyTranslations();
+  try { if (typeof updateScenarioHistoryButton === 'function') updateScenarioHistoryButton(); } catch (e) {}
 }
 
 function applyTranslations() {
@@ -5180,5 +5188,301 @@ function applyTranslations() {
   }
 }
 </script>
+<!-- ==================== PAST SCENARIOS (local, per-device history) ==================== -->
+<style id="vl-hist-styles">
+  .vl-hist-trigger {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin: 0.85rem 0 0.25rem; padding: 7px 14px;
+    background: var(--white); color: var(--navy);
+    border: 1px solid var(--border2, rgba(27,42,74,0.2));
+    border-radius: 999px; font-family: var(--body);
+    font-size: 12.5px; font-weight: 500; letter-spacing: 0.01em;
+    cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .vl-hist-trigger:hover { background: var(--gold-pale, #FBF6E8); border-color: var(--gold); }
+  .vl-hist-trigger svg { width: 14px; height: 14px; stroke: var(--gold-deep, #A88835); }
+  .vl-hist-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    background: var(--navy); color: var(--gold);
+    border-radius: 999px; font-size: 10.5px; font-weight: 600;
+  }
+
+  .vl-hist-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(19,31,56,0.55); backdrop-filter: blur(2px);
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  .vl-hist-overlay.open { display: flex; }
+  .vl-hist-card {
+    background: var(--paper, #F7F5EF); width: 100%; max-width: 560px;
+    max-height: 86vh; display: flex; flex-direction: column;
+    border-radius: var(--r-lg, 12px); overflow: hidden;
+    box-shadow: 0 24px 60px rgba(19,31,56,0.35);
+    border: 1px solid rgba(201,168,76,0.25);
+  }
+  .vl-hist-head { padding: 1.25rem 1.4rem 0.9rem; background: var(--navy); color: var(--white); }
+  .vl-hist-title { font-family: var(--serif, Georgia, serif); font-size: 1.25rem; font-weight: 600; color: var(--gold-soft, #E5D5A0); }
+  .vl-hist-sub { font-family: var(--body); font-size: 12.5px; color: rgba(255,255,255,0.72); margin-top: 4px; line-height: 1.5; }
+
+  .vl-hist-list { padding: 0.75rem 1rem 0.25rem; overflow-y: auto; }
+  .vl-hist-empty { padding: 2rem 1.25rem; text-align: center; color: var(--stone-500, #6E6B5F); font-size: 13px; line-height: 1.6; }
+
+  .vl-hist-item {
+    background: var(--white); border: 1px solid var(--border, rgba(27,42,74,0.1));
+    border-radius: var(--r, 8px); padding: 0.85rem 0.95rem; margin-bottom: 0.6rem;
+  }
+  .vl-hist-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .vl-hist-badge {
+    font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 9px; border-radius: 999px; background: var(--navy); color: var(--gold);
+  }
+  .vl-hist-time { font-size: 11px; color: var(--stone-400, #9C988A); }
+  .vl-hist-text {
+    font-family: var(--body); font-size: 13.5px; color: var(--stone-700, #2C2B27);
+    line-height: 1.55; margin-bottom: 0.7rem;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .vl-hist-item-actions { display: flex; align-items: center; gap: 8px; }
+  .vl-hist-reuse {
+    flex: 1; padding: 8px 12px; background: var(--navy); color: var(--gold);
+    border: none; border-radius: var(--r, 8px); font-family: var(--body);
+    font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em;
+    transition: background 0.15s ease;
+  }
+  .vl-hist-reuse:hover { background: var(--navy-deep, #131F38); }
+  .vl-hist-del {
+    width: 34px; height: 34px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+    background: var(--white); color: var(--stone-400, #9C988A);
+    border: 1px solid var(--border, rgba(27,42,74,0.1)); border-radius: var(--r, 8px);
+    font-size: 18px; line-height: 1; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .vl-hist-del:hover { color: var(--danger, #7A2424); border-color: var(--danger, #7A2424); }
+
+  .vl-hist-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 0.85rem 1.4rem; border-top: 1px solid var(--border, rgba(27,42,74,0.1));
+    background: var(--white);
+  }
+  .vl-hist-clear {
+    background: none; border: none; color: var(--danger, #7A2424);
+    font-family: var(--body); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 6px 4px;
+  }
+  .vl-hist-clear:disabled { color: var(--stone-300, #C9C5B8); cursor: default; }
+  .vl-hist-close {
+    padding: 8px 18px; background: var(--navy); color: var(--white);
+    border: none; border-radius: var(--r, 8px); font-family: var(--body);
+    font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .vl-hist-close:hover { background: var(--navy-deep, #131F38); }
+</style>
+
+<div class="vl-hist-overlay" id="scenario-history-modal" onclick="if(event.target===this)closeScenarioHistory()" role="dialog" aria-modal="true" aria-labelledby="vl-hist-modal-title">
+  <div class="vl-hist-card">
+    <div class="vl-hist-head">
+      <div class="vl-hist-title" id="vl-hist-modal-title">Past scenarios</div>
+      <div class="vl-hist-sub" id="vl-hist-modal-sub">Reuse a behavior you entered before.</div>
+    </div>
+    <div class="vl-hist-list" id="vl-hist-list"></div>
+    <div class="vl-hist-foot">
+      <button type="button" class="vl-hist-clear" id="vl-hist-clear-btn" onclick="clearScenarioHistory()">Clear all</button>
+      <button type="button" class="vl-hist-close" id="vl-hist-close-btn" onclick="closeScenarioHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Past Scenarios: per-device localStorage history (no backend) ===== */
+(function () {
+  var KEY = 'vl_scenarioHistory';
+  var MAX = 25;
+
+  var TXT = {
+    en: {
+      trigger: 'Past scenarios', title: 'Past scenarios',
+      sub: 'Reuse a behavior you entered before. These stay on this device only.',
+      reuse: 'Reuse', clear: 'Clear all', close: 'Close',
+      empty: 'No saved scenarios yet. After you get guidance, the behavior you described is saved here so you can reuse it later.',
+      confirmClear: 'Clear all saved scenarios on this device? This cannot be undone.',
+      first: 'First time', repeated: 'Repeated',
+      now: 'just now', mins: 'm ago', hrs: 'h ago', days: 'd ago'
+    },
+    es: {
+      trigger: 'Escenarios anteriores', title: 'Escenarios anteriores',
+      sub: 'Reutilice un comportamiento que ingresó antes. Se guardan solo en este dispositivo.',
+      reuse: 'Reutilizar', clear: 'Borrar todo', close: 'Cerrar',
+      empty: 'Aún no hay escenarios guardados. Después de recibir orientación, el comportamiento que describió se guarda aquí para reutilizarlo.',
+      confirmClear: '¿Borrar todos los escenarios guardados en este dispositivo? Esto no se puede deshacer.',
+      first: 'Primera vez', repeated: 'Repetido',
+      now: 'ahora', mins: ' min', hrs: ' h', days: ' d'
+    }
+  };
+  function L() { return TXT[(typeof currentLang !== 'undefined' && currentLang === 'es') ? 'es' : 'en']; }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function persist(arr) {
+    try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+
+  function esc(s) {
+    if (typeof escapeHtml === 'function') return escapeHtml(s);
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function relTime(ts) {
+    var t = L(); var diff = Date.now() - ts;
+    var m = Math.floor(diff / 60000);
+    if (m < 1) return t.now;
+    if (m < 60) return m + t.mins;
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + t.hrs;
+    var d = Math.floor(h / 24);
+    if (d < 7) return d + t.days;
+    try { return new Date(ts).toLocaleDateString(currentLang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' }); }
+    catch (e) { return ''; }
+  }
+
+  // ----- Save (called from render() on a successful analysis) -----
+  window.saveScenarioToHistory = function () {
+    try {
+      var text = (window.lastSituation || '').trim();
+      if (!text) return;
+      var hist = load().filter(function (h) {
+        return (h.text || '').trim().toLowerCase() !== text.toLowerCase();
+      });
+      hist.unshift({
+        id: 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        text: text,
+        pattern: (typeof selectedPattern !== 'undefined' && selectedPattern) ? selectedPattern : '',
+        sector: (typeof selectedSector !== 'undefined' && selectedSector) ? selectedSector : '',
+        tone: (typeof selectedTone !== 'undefined' && selectedTone) ? selectedTone : '',
+        lang: (typeof currentLang !== 'undefined') ? currentLang : 'en',
+        ts: Date.now()
+      });
+      if (hist.length > MAX) hist = hist.slice(0, MAX);
+      persist(hist);
+    } catch (e) { /* localStorage blocked — ignore */ }
+    window.updateScenarioHistoryButton();
+  };
+
+  // ----- Trigger button (shown only when history exists) -----
+  window.updateScenarioHistoryButton = function () {
+    var btn = document.getElementById('vl-hist-trigger');
+    if (!btn) return;
+    var n = load().length;
+    var label = btn.querySelector('.vl-hist-label');
+    if (label) label.textContent = L().trigger;
+    var cnt = btn.querySelector('.vl-hist-count');
+    if (cnt) cnt.textContent = n;
+    btn.style.display = n > 0 ? 'inline-flex' : 'none';
+  };
+
+  // ----- Modal -----
+  function renderList() {
+    var t = L();
+    document.getElementById('vl-hist-modal-title').textContent = t.title;
+    document.getElementById('vl-hist-modal-sub').textContent = t.sub;
+    document.getElementById('vl-hist-clear-btn').textContent = t.clear;
+    document.getElementById('vl-hist-close-btn').textContent = t.close;
+
+    var hist = load();
+    var list = document.getElementById('vl-hist-list');
+    document.getElementById('vl-hist-clear-btn').disabled = hist.length === 0;
+
+    if (!hist.length) {
+      list.innerHTML = '<div class="vl-hist-empty">' + esc(t.empty) + '</div>';
+      return;
+    }
+    list.innerHTML = hist.map(function (h) {
+      var badge = h.pattern === 'repeated' ? t.repeated : (h.pattern === 'first' ? t.first : '');
+      return '<div class="vl-hist-item">' +
+        '<div class="vl-hist-meta">' +
+          (badge ? '<span class="vl-hist-badge">' + esc(badge) + '</span>' : '') +
+          '<span class="vl-hist-time">' + esc(relTime(h.ts)) + '</span>' +
+        '</div>' +
+        '<div class="vl-hist-text">' + esc(h.text) + '</div>' +
+        '<div class="vl-hist-item-actions">' +
+          '<button type="button" class="vl-hist-reuse" onclick="reuseScenario(\'' + h.id + '\')">' + esc(t.reuse) + '</button>' +
+          '<button type="button" class="vl-hist-del" aria-label="Delete" onclick="deleteScenario(\'' + h.id + '\')">&times;</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.openScenarioHistory = function () {
+    renderList();
+    document.getElementById('scenario-history-modal').classList.add('open');
+  };
+  window.closeScenarioHistory = function () {
+    document.getElementById('scenario-history-modal').classList.remove('open');
+  };
+  window.deleteScenario = function (id) {
+    persist(load().filter(function (h) { return h.id !== id; }));
+    renderList();
+    window.updateScenarioHistoryButton();
+  };
+  window.clearScenarioHistory = function () {
+    if (!load().length) return;
+    if (!confirm(L().confirmClear)) return;
+    persist([]);
+    renderList();
+    window.updateScenarioHistoryButton();
+  };
+
+  // ----- Reuse: load the scenario back into Fast Mode, ready to re-run -----
+  window.reuseScenario = function (id) {
+    var item = load().find(function (h) { return h.id === id; });
+    if (!item) return;
+    window.closeScenarioHistory();
+
+    var f = document.getElementById('fast-f-situation');
+    if (f) f.value = item.text;
+    if (item.pattern && typeof selectFastPattern === 'function') selectFastPattern(item.pattern);
+
+    // Force the Fast Mode input view (mirrors switchMode reset, without re-running anything)
+    try {
+      document.body.classList.remove('fast-results');
+      document.body.classList.remove('detailed-results');
+      ['results-view', 'loading-view', 'practice-mode', 'roleplay-mode', 'practice-results', 'step-1', 'step-2']
+        .forEach(function (mid) { var el = document.getElementById(mid); if (el) el.style.display = 'none'; });
+      document.getElementById('fast-mode').style.display = 'block';
+      if (typeof currentMode !== 'undefined') currentMode = 'fast';
+      ['fast', 'detailed', 'practice', 'roleplay'].forEach(function (m) {
+        var b = document.getElementById('mode-btn-' + m);
+        if (b) b.classList.toggle('active', m === 'fast');
+      });
+      if (typeof renderFastValuesBar === 'function') renderFastValuesBar();
+    } catch (e) {}
+
+    setTimeout(function () {
+      if (f) { f.focus(); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }, 60);
+  };
+
+  // Close on Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var m = document.getElementById('scenario-history-modal');
+      if (m && m.classList.contains('open')) window.closeScenarioHistory();
+    }
+  });
+
+  // Initialize once the DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.updateScenarioHistoryButton);
+  } else {
+    window.updateScenarioHistoryButton();
+  }
+})();
+</script>
+
 </body>
 </html>
