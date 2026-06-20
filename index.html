@@ -2375,6 +2375,10 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
       <span class="vl-hist-label">Past scenarios</span>
       <span class="vl-hist-count">0</span>
     </button>
+    <button type="button" class="vl-hist-trigger vl-report-trigger" id="vl-report-trigger" onclick="openScenarioReport()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="14" width="3" height="4"/></svg>
+      <span class="vl-report-label">My reflection report</span>
+    </button>
 
     <!-- Saved values bar (shown when values are stored) -->
     <div class="fast-values-bar" id="fast-values-bar" style="display:none;">
@@ -5275,6 +5279,24 @@ function applyTranslations() {
     font-size: 12.5px; font-weight: 600; cursor: pointer;
   }
   .vl-hist-close:hover { background: var(--navy-deep, #131F38); }
+
+  .vl-report-trigger svg { stroke: var(--gold-deep, #A88835); }
+  .vl-report-summary { display: flex; gap: 10px; padding: 0.5rem 0 0.9rem; }
+  .vl-report-stat { flex: 1; background: var(--white); border: 1px solid var(--border, rgba(27,42,74,0.1)); border-radius: var(--r, 8px); padding: 0.7rem 0.4rem; text-align: center; }
+  .vl-stat-num { display: block; font-family: var(--serif, Georgia, serif); font-size: 1.5rem; font-weight: 600; color: var(--navy); line-height: 1; }
+  .vl-stat-cap { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--stone-500, #6E6B5F); margin-top: 5px; }
+  .vl-report-span { font-size: 11.5px; color: var(--stone-400, #9C988A); margin: -0.3rem 0 1rem; }
+  .vl-report-section { margin-bottom: 1.1rem; }
+  .vl-report-h { font-family: var(--body); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--navy); margin: 0 0 0.6rem; }
+  .vl-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .vl-bar-label { flex: 0 0 40%; font-size: 12.5px; color: var(--stone-700, #2C2B27); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vl-bar-track { flex: 1; height: 14px; background: var(--stone-100, #EFEDE6); border-radius: 999px; overflow: hidden; }
+  .vl-bar-fill { height: 100%; border-radius: 999px; }
+  .vl-bar-fill.risk { background: var(--gold, #C9A84C); }
+  .vl-bar-fill.uph { background: var(--navy, #1B2A4A); }
+  .vl-bar-count { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--stone-500, #6E6B5F); min-width: 14px; text-align: right; }
+  .vl-report-none { font-size: 12.5px; color: var(--stone-400, #9C988A); font-style: italic; }
+  .vl-report-take { margin-top: 0.5rem; padding: 0.85rem 1rem; background: var(--gold-pale, #FBF6E8); border-radius: var(--r, 8px); font-size: 13px; line-height: 1.55; color: var(--stone-700, #2C2B27); }
 </style>
 
 <div class="vl-hist-overlay" id="scenario-history-modal" onclick="if(event.target===this)closeScenarioHistory()" role="dialog" aria-modal="true" aria-labelledby="vl-hist-modal-title">
@@ -5287,6 +5309,19 @@ function applyTranslations() {
     <div class="vl-hist-foot">
       <button type="button" class="vl-hist-clear" id="vl-hist-clear-btn" onclick="clearScenarioHistory()">Clear all</button>
       <button type="button" class="vl-hist-close" id="vl-hist-close-btn" onclick="closeScenarioHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="vl-hist-overlay" id="scenario-report-modal" onclick="if(event.target===this)closeScenarioReport()" role="dialog" aria-modal="true" aria-labelledby="vl-report-modal-title">
+  <div class="vl-hist-card">
+    <div class="vl-hist-head">
+      <div class="vl-hist-title" id="vl-report-modal-title">Your reflection report</div>
+      <div class="vl-hist-sub" id="vl-report-modal-sub"></div>
+    </div>
+    <div class="vl-hist-list" id="vl-report-body"></div>
+    <div class="vl-hist-foot" style="justify-content:flex-end;">
+      <button type="button" class="vl-hist-close" id="vl-report-close-btn" onclick="closeScenarioReport()">Close</button>
     </div>
   </div>
 </div>
@@ -5305,7 +5340,18 @@ function applyTranslations() {
       empty: 'No saved scenarios yet. After you get guidance, the behavior you described is saved here so you can reuse it later.',
       confirmClear: 'Clear all saved scenarios on this device? This cannot be undone.',
       first: 'First time', repeated: 'Repeated',
-      now: 'just now', mins: 'm ago', hrs: 'h ago', days: 'd ago'
+      now: 'just now', mins: 'm ago', hrs: 'h ago', days: 'd ago',
+      report: {
+        trigger: 'My reflection report', title: 'Your reflection report',
+        sub: 'Patterns across your saved scenarios. Private to this device \u2014 for your reflection.',
+        scenarios: 'scenarios', firstTime: 'first-time', repeated: 'repeated', span: 'Span:',
+        atRiskH: 'Values most often in tension', upheldH: 'Values most often upheld',
+        noneYet: 'This fills in as you save more scenarios with guidance.',
+        takeLead: 'The value that comes up most when things are in tension is',
+        takeTail: '. That may be a helpful place to focus your reflection.',
+        takeNoGuidance: 'Your values trends will appear here as you save more scenarios.',
+        need3: 'Save at least 3 scenarios and your reflection report will appear here.'
+      }
     },
     es: {
       trigger: 'Escenarios anteriores', title: 'Escenarios anteriores',
@@ -5314,7 +5360,18 @@ function applyTranslations() {
       empty: 'Aún no hay escenarios guardados. Después de recibir orientación, el comportamiento que describió se guarda aquí para reutilizarlo.',
       confirmClear: '¿Borrar todos los escenarios guardados en este dispositivo? Esto no se puede deshacer.',
       first: 'Primera vez', repeated: 'Repetido',
-      now: 'ahora', mins: ' min', hrs: ' h', days: ' d'
+      now: 'ahora', mins: ' min', hrs: ' h', days: ' d',
+      report: {
+        trigger: 'Mi informe de reflexi\u00f3n', title: 'Su informe de reflexi\u00f3n',
+        sub: 'Patrones en sus escenarios guardados. Privado en este dispositivo \u2014 para su reflexi\u00f3n.',
+        scenarios: 'escenarios', firstTime: 'primera vez', repeated: 'repetidos', span: 'Per\u00edodo:',
+        atRiskH: 'Valores m\u00e1s a menudo en tensi\u00f3n', upheldH: 'Valores m\u00e1s a menudo respetados',
+        noneYet: 'Esto se completa a medida que guarda m\u00e1s escenarios con orientaci\u00f3n.',
+        takeLead: 'El valor que aparece m\u00e1s a menudo cuando hay tensi\u00f3n es',
+        takeTail: '. Puede ser un buen punto para enfocar su reflexi\u00f3n.',
+        takeNoGuidance: 'Sus tendencias de valores aparecer\u00e1n aqu\u00ed a medida que guarde m\u00e1s escenarios.',
+        need3: 'Guarde al menos 3 escenarios y su informe de reflexi\u00f3n aparecer\u00e1 aqu\u00ed.'
+      }
     }
   };
   function L() { return TXT[(typeof currentLang !== 'undefined' && currentLang === 'es') ? 'es' : 'en']; }
@@ -5358,6 +5415,20 @@ function applyTranslations() {
       var hist = load().filter(function (h) {
         return (h.text || '').trim().toLowerCase() !== text.toLowerCase();
       });
+      var atRisk = [], upheld = [];
+      try {
+        var r = (typeof lastResult === 'object' && lastResult) ? lastResult : null;
+        if (r) {
+          if (Array.isArray(r.valuesAnalysis)) r.valuesAnalysis.forEach(function (v) {
+            if (!v || !v.value) return;
+            var st = String(v.status || '').toLowerCase();
+            if (st.indexOf('mis') === 0) atRisk.push(v.value);
+            else if (st.indexOf('uph') === 0) upheld.push(v.value);
+          });
+          if (Array.isArray(r.whatToWatch)) r.whatToWatch.forEach(function (w) { if (w && w.valueAtRisk) atRisk.push(w.valueAtRisk); });
+          if (Array.isArray(r.whatsWorking)) r.whatsWorking.forEach(function (w) { if (w && w.valueAligned) upheld.push(w.valueAligned); });
+        }
+      } catch (e) {}
       hist.unshift({
         id: 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
         text: text,
@@ -5365,6 +5436,8 @@ function applyTranslations() {
         sector: (typeof selectedSector !== 'undefined' && selectedSector) ? selectedSector : '',
         tone: (typeof selectedTone !== 'undefined' && selectedTone) ? selectedTone : '',
         lang: (typeof currentLang !== 'undefined') ? currentLang : 'en',
+        atRisk: atRisk,
+        upheld: upheld,
         ts: Date.now()
       });
       if (hist.length > MAX) hist = hist.slice(0, MAX);
@@ -5383,6 +5456,12 @@ function applyTranslations() {
     var cnt = btn.querySelector('.vl-hist-count');
     if (cnt) cnt.textContent = n;
     btn.style.display = n > 0 ? 'inline-flex' : 'none';
+    var rbtn = document.getElementById('vl-report-trigger');
+    if (rbtn) {
+      var rlabel = rbtn.querySelector('.vl-report-label');
+      if (rlabel) rlabel.textContent = L().report.trigger;
+      rbtn.style.display = 'inline-flex';
+    }
   };
 
   // ----- Modal -----
@@ -5467,11 +5546,82 @@ function applyTranslations() {
     }, 60);
   };
 
+  // ----- Reflection report (on-device, no AI) -----
+  function fmtDate(ts) {
+    try { return new Date(ts).toLocaleDateString(currentLang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' }); }
+    catch (e) { return ''; }
+  }
+  function topN(obj, k) {
+    return Object.keys(obj).map(function (key) { return { label: key, count: obj[key] }; })
+      .sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); }).slice(0, k);
+  }
+  function bars(items, cls, noneTxt) {
+    if (!items.length) return '<div class="vl-report-none">' + esc(noneTxt) + '</div>';
+    var max = items[0].count || 1;
+    return items.map(function (it) {
+      var pct = Math.max(8, Math.round(it.count / max * 100));
+      return '<div class="vl-bar-row">' +
+        '<div class="vl-bar-label">' + esc(it.label) + '</div>' +
+        '<div class="vl-bar-track"><div class="vl-bar-fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
+        '<div class="vl-bar-count">' + it.count + '</div></div>';
+    }).join('');
+  }
+
+  window.openScenarioReport = function () {
+    var t = L().report;
+    document.getElementById('vl-report-modal-title').textContent = t.title;
+    document.getElementById('vl-report-modal-sub').textContent = t.sub;
+    document.getElementById('vl-report-close-btn').textContent = L().close;
+    var body = document.getElementById('vl-report-body');
+    var hist = load();
+
+    if (hist.length < 3) {
+      body.innerHTML = '<div class="vl-hist-empty">' + esc(t.need3) + '</div>';
+      document.getElementById('scenario-report-modal').classList.add('open');
+      return;
+    }
+
+    var risk = {}, upheld = {}, first = 0, repeated = 0, withGuidance = 0;
+    hist.forEach(function (h) {
+      var had = false;
+      (h.atRisk || []).forEach(function (v) { v = String(v).trim(); if (v) { risk[v] = (risk[v] || 0) + 1; had = true; } });
+      (h.upheld || []).forEach(function (v) { v = String(v).trim(); if (v) { upheld[v] = (upheld[v] || 0) + 1; had = true; } });
+      if (h.pattern === 'repeated') repeated++; else if (h.pattern === 'first') first++;
+      if (had) withGuidance++;
+    });
+    var topRisk = topN(risk, 5), topUph = topN(upheld, 5);
+    var times = hist.map(function (h) { return h.ts; }).filter(Boolean).sort(function (a, b) { return a - b; });
+    var span = times.length ? (fmtDate(times[0]) + ' \u2013 ' + fmtDate(times[times.length - 1])) : '';
+
+    var html = '';
+    html += '<div class="vl-report-summary">' +
+      '<div class="vl-report-stat"><span class="vl-stat-num">' + hist.length + '</span><span class="vl-stat-cap">' + esc(t.scenarios) + '</span></div>' +
+      '<div class="vl-report-stat"><span class="vl-stat-num">' + first + '</span><span class="vl-stat-cap">' + esc(t.firstTime) + '</span></div>' +
+      '<div class="vl-report-stat"><span class="vl-stat-num">' + repeated + '</span><span class="vl-stat-cap">' + esc(t.repeated) + '</span></div>' +
+      '</div>';
+    if (span) html += '<div class="vl-report-span">' + esc(t.span) + ' ' + esc(span) + '</div>';
+    html += '<div class="vl-report-section"><h4 class="vl-report-h">' + esc(t.atRiskH) + '</h4>' + bars(topRisk, 'risk', t.noneYet) + '</div>';
+    html += '<div class="vl-report-section"><h4 class="vl-report-h">' + esc(t.upheldH) + '</h4>' + bars(topUph, 'uph', t.noneYet) + '</div>';
+    if (topRisk.length) {
+      html += '<div class="vl-report-take">' + esc(t.takeLead) + ' <strong>' + esc(topRisk[0].label) + '</strong>' + esc(t.takeTail) + '</div>';
+    } else if (withGuidance === 0) {
+      html += '<div class="vl-report-take">' + esc(t.takeNoGuidance) + '</div>';
+    }
+
+    body.innerHTML = html;
+    document.getElementById('scenario-report-modal').classList.add('open');
+  };
+  window.closeScenarioReport = function () {
+    document.getElementById('scenario-report-modal').classList.remove('open');
+  };
+
   // Close on Escape
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-      var m = document.getElementById('scenario-history-modal');
-      if (m && m.classList.contains('open')) window.closeScenarioHistory();
+      ['scenario-history-modal', 'scenario-report-modal'].forEach(function (id) {
+        var m = document.getElementById(id);
+        if (m && m.classList.contains('open')) m.classList.remove('open');
+      });
     }
   });
 
