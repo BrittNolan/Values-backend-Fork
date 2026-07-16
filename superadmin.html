@@ -99,6 +99,17 @@ body.booted .boot-splash { display: none; }
 .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 13px; font-weight: 300; }
 .spinner { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 2rem auto; display: block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.org-row-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.org-row-added { font-size: 11.5px; color: var(--text3); font-weight: 300; text-align: right; }
+.btn-mini { background: transparent; color: var(--navy); border: 1px solid var(--border2); border-radius: var(--r); font-size: 12px; font-weight: 400; padding: 7px 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
+.btn-mini:hover { border-color: var(--navy); background: var(--navy); color: var(--gold); }
+.btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-mini-danger { color: var(--red); }
+.btn-mini-danger:hover { border-color: var(--red); background: var(--red); color: #fff; }
+
+/* ── RESET-LINK MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(27,42,74,0.55); display: flex; align-items: center; justify-content: center; padding: 1.5rem; z-index: 100; }
+.modal-card { background: var(--white); border-radius: var(--rl); padding: 1.75rem; width: 100%; max-width: 460px; max-height: 90vh; overflow: auto; }
 
 /* ── WIZARD ── */
 .wiz-head { margin-bottom: 1.25rem; }
@@ -268,6 +279,24 @@ body.booted .boot-splash { display: none; }
         </div>
       </div>
     </div>
+
+    <!-- RESET-LINK MODAL -->
+    <div class="modal-overlay" id="reset-modal" style="display:none;">
+      <div class="modal-card">
+        <div class="success-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2d7a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div class="success-title" id="reset-title" style="font-size:22px;">New set-password link</div>
+        <div class="success-sub" id="reset-sub">Send this to the organization — they choose their own password.</div>
+        <div id="reset-body"></div>
+        <div class="warn-box">This link works once and expires after about a day. Any earlier link for this organization stops working.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-primary" id="btn-reset-copy-invite">Copy invite email</button>
+          <button class="btn-ghost" id="btn-reset-copy-link">Copy link only</button>
+          <button class="btn-ghost" id="btn-reset-close">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="shell-footer">
@@ -281,6 +310,7 @@ let accessToken = null;
 let currentUser = null;
 let wiz = null;
 let lastCreds = null;
+let resetResult = null;
 
 const $ = id => document.getElementById(id);
 
@@ -314,6 +344,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (lastCreds && lastCreds.setupLink) copyText(inviteEmailBody(), $('btn-copy-invite'));
   });
   $('btn-success-done').addEventListener('click', () => { lastCreds = null; showHome(); });
+  $('btn-reset-close').addEventListener('click', hideResetModal);
+  $('btn-reset-copy-link').addEventListener('click', () => { if (resetResult) copyText(resetResult.setupLink, $('btn-reset-copy-link')); });
+  $('btn-reset-copy-invite').addEventListener('click', () => { if (resetResult) copyText(buildInvite(resetResult), $('btn-reset-copy-invite')); });
 
   sb.auth.onAuthStateChange((event, sess) => {
     if (sess) { accessToken = sess.access_token; currentUser = sess.user; }
@@ -415,13 +448,22 @@ function renderOrgs(orgs) {
     return `
       <div class="org-row">
         <div class="org-swatch" style="background:${escapeAttr(o.primary_color || '#1B2A4A')};"><i style="background:${escapeAttr(o.accent_color || '#C9A84C')};"></i></div>
-        <div>
+        <div style="min-width:0;">
           <div class="org-row-name">${escapeHtml(o.name)}</div>
           <div class="org-row-meta">username: ${escapeHtml(o.username)} &middot; ${o.values_count} value${o.values_count !== 1 ? 's' : ''}${o.has_logo ? ' &middot; logo' : ''}</div>
         </div>
-        <div class="org-row-right">added<br>${escapeHtml(date)}</div>
+        <div class="org-row-actions">
+          <button class="btn-mini" data-reset="${escapeAttr(o.username)}" data-name="${escapeAttr(o.name)}" title="Generate a fresh set-password link for this organization">Reset password link</button>
+          <button class="btn-mini btn-mini-danger" data-delete="${escapeAttr(o.id)}" data-name="${escapeAttr(o.name)}" title="Permanently delete this organization">Delete</button>
+          <div class="org-row-added">added<br>${escapeHtml(date)}</div>
+        </div>
       </div>`;
   }).join('');
+
+  list.querySelectorAll('[data-reset]').forEach(btn =>
+    btn.addEventListener('click', () => doResetLink(btn.dataset.reset, btn.dataset.name, btn)));
+  list.querySelectorAll('[data-delete]').forEach(btn =>
+    btn.addEventListener('click', () => doDeleteOrg(btn.dataset.delete, btn.dataset.name, btn)));
 }
 
 async function doLogin() {
@@ -866,19 +908,109 @@ async function submitCreate() {
 // Success screen
 // ─────────────────────────────────────────────
 // The ready-to-send invite email. Plain text — mail clients linkify the URL.
-function inviteEmailBody() {
+// Shared by the onboarding success screen and the reset-link modal; both pass
+// an object with { username, setupLink, signin }.
+function buildInvite(o) {
   return [
     'Welcome to valuesalign.app!',
     '',
-    `Your username is: ${lastCreds.username}`,
+    `Your username is: ${o.username}`,
     '',
     'Please use the link below to set your password:',
-    lastCreds.setupLink,
+    o.setupLink,
     '',
     'The link works once and expires after about a day — if it stops working, just reply to this email and we\'ll send you a fresh one.',
     '',
-    `Once your password is set, everyone at your organization signs in with this shared username and password at ${lastCreds.signin}`
+    `Once your password is set, everyone at your organization signs in with this shared username and password at ${o.signin}`
   ].join('\r\n');
+}
+function inviteEmailBody() { return buildInvite(lastCreds); }
+
+// ─────────────────────────────────────────────
+// Reset password link (existing orgs)
+// ─────────────────────────────────────────────
+async function doResetLink(username, name, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const r = await fetch('/api/superadmin/reset-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ username })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.setup_link) {
+      alert(data.error || 'Could not generate a new link. Please try again.');
+      return;
+    }
+    resetResult = { orgName: name, username, setupLink: data.setup_link, signin: location.origin };
+    showResetModal();
+  } catch (e) {
+    alert('Connection error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function showResetModal() {
+  $('reset-title').textContent = `New link for ${resetResult.orgName}`;
+  $('reset-body').innerHTML = `
+    <div class="cred-line">
+      <span class="cred-key">Sign-in page</span>
+      <span class="cred-val">${escapeHtml(resetResult.signin)}</span>
+    </div>
+    <div class="cred-line">
+      <span class="cred-key">Username</span>
+      <span class="cred-val">${escapeHtml(resetResult.username)}</span>
+    </div>
+    <div class="cred-line">
+      <span class="cred-key">Set-password link</span>
+      <span class="cred-val truncate">${escapeHtml(resetResult.setupLink)}</span>
+    </div>`;
+  $('reset-modal').style.display = 'flex';
+}
+
+function hideResetModal() {
+  $('reset-modal').style.display = 'none';
+  resetResult = null;
+}
+
+// ─────────────────────────────────────────────
+// Delete organization (irreversible)
+// ─────────────────────────────────────────────
+async function doDeleteOrg(id, name, btn) {
+  const ok = confirm(
+    `Permanently delete “${name}”?\n\n` +
+    `This removes the organization, its shared login, and its handbook. ` +
+    `Anyone using it loses access immediately. This cannot be undone.`
+  );
+  if (!ok) return;
+
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+  try {
+    const r = await fetch('/api/superadmin/orgs', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      alert(data.error || 'Could not delete the organization. Please try again.');
+      btn.disabled = false;
+      btn.textContent = orig;
+      return;
+    }
+    // Gone — reload the list (the row disappears with it).
+    refreshOrgs();
+  } catch (e) {
+    alert('Connection error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 }
 
 function showSuccess(org, creds, hasHandbook, setupLink) {
