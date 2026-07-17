@@ -63,6 +63,14 @@ async function deleteOrg(req, res) {
     return res.status(500).json({ error: 'Could not unlink the organization’s login.' })
   }
 
+  // Saved analysis sessions reference the org (api/analyze.js logs them); they
+  // must go before the org row or the FK constraint blocks the delete.
+  const { error: sessErr } = await supa.from('sessions').delete().eq('org_id', id)
+  if (sessErr) {
+    console.error('Delete sessions error:', sessErr)
+    return res.status(500).json({ error: 'Could not delete the organization’s saved sessions.' })
+  }
+
   // Fail-soft: a leftover auth user is harmless (the onboarding path reclaims
   // orphaned users by email), so don't block the delete on it.
   for (const uid of userIds) {
