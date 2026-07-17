@@ -65,6 +65,8 @@ body.booted .boot-splash { display: none; }
 .shell-user { font-size: 11px; color: rgba(255,255,255,0.35); }
 .btn-logout { font-size: 12px; color: rgba(255,255,255,0.45); background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--r); padding: 6px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
 .btn-logout:hover { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.3); }
+.btn-nav { font-size: 12px; color: rgba(255,255,255,0.55); background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: var(--r); padding: 6px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-nav:hover { color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.35); }
 
 .main { width: 100%; max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; flex: 1; }
 
@@ -219,6 +221,7 @@ body.booted .boot-splash { display: none; }
     <div class="shell-header-left">
       <div class="shell-wordmark">Values <span>Lab</span></div>
       <div class="shell-pill">Onboarding</div>
+      <button class="btn-nav" id="btn-home" style="display:none;">&larr; Organizations</button>
     </div>
     <div class="shell-header-right">
       <span class="shell-user" id="shell-user"></span>
@@ -337,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') $('login-password').focus(); });
   $('btn-signout').addEventListener('click', doLogout);
   $('btn-new-org').addEventListener('click', startWizard);
+  $('btn-home').addEventListener('click', goHome);
   $('wiz-cancel').addEventListener('click', cancelWizard);
   $('wiz-back').addEventListener('click', () => navStep(-1));
   $('wiz-next').addEventListener('click', () => navStep(1));
@@ -421,7 +425,18 @@ function showHome() {
   $('wizard-view').style.display = 'none';
   $('success-view').style.display = 'none';
   $('home-view').style.display = 'block';
+  $('btn-home').style.display = 'none';
   refreshOrgs();
+}
+
+// Header "← Organizations" button: return to the org list + new-org screen from
+// anywhere. Guards against silently discarding an in-progress onboarding.
+function goHome() {
+  if (wiz) {
+    collectStep(false);
+    if (wizardDirty() && !confirm('Discard this onboarding? Everything you’ve entered will be lost.')) return;
+  }
+  showHome();
 }
 
 async function refreshOrgs() {
@@ -533,6 +548,7 @@ function startWizard() {
   $('home-view').style.display = 'none';
   $('success-view').style.display = 'none';
   $('wizard-view').style.display = 'block';
+  $('btn-home').style.display = 'inline-flex';
   renderStep();
 }
 
@@ -1111,6 +1127,7 @@ function showSuccess(org, creds, hasHandbook, setupLink) {
   lastCreds = { orgName: org.name, signin: location.origin, username: creds.username, password: creds.password, setupLink: setupLink || null };
   $('wizard-view').style.display = 'none';
   $('success-view').style.display = 'block';
+  $('btn-home').style.display = 'inline-flex';
   $('success-title').textContent = `${org.name} is ready`;
   $('success-sub').textContent = (lastCreds.setupLink
     ? 'Click “Copy invite email” below and paste it into an email to your contact — the message is pre-written. They’ll choose their own password.'
