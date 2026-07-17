@@ -123,6 +123,8 @@ body { font-family: var(--body); background: var(--paper); color: var(--ink); mi
   text-transform: uppercase;
 }
 .lang-btn:hover { background: rgba(201,168,76,0.08); border-color: var(--gold); color: var(--gold); }
+select.lang-select { font-family: inherit; font-size: inherit; cursor: pointer; padding-right: 26px; background-position: right 8px center; }
+select.lang-select option { color: #1a1a1a; background: #fff; }
 .admin-link {
   font-size: 22px;
   font-weight: 600;
@@ -2243,7 +2245,7 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
      org-loader.js shows this only after confirming there is no active session. -->
 <div class="overlay" id="login-overlay" style="display:none">
   <div class="overlay-card">
-    <button onclick="toggleLanguage()" id="lang-btn-login" class="overlay-lang">Español</button>
+    <select onchange="setLanguage(this.value)" id="lang-sel-login" class="lang-select overlay-lang" aria-label="Language"><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="rw">Kinyarwanda</option></select>
     <div class="overlay-mark">
       <svg width="56" height="56" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="80" height="80" rx="16" fill="#1B2A4A"/>
@@ -2274,7 +2276,7 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
      from admin) don't see a brief flash of this card before JS hides it. -->
 <div class="overlay" id="splash-overlay" style="display:none">
   <div class="overlay-card">
-    <button onclick="toggleLanguage()" id="lang-btn-splash" class="overlay-lang">Español</button>
+    <select onchange="setLanguage(this.value)" id="lang-sel-splash" class="lang-select overlay-lang" aria-label="Language"><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="rw">Kinyarwanda</option></select>
     <div class="overlay-mark">
       <svg width="48" height="48" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="80" height="80" rx="16" fill="#1B2A4A"/>
@@ -2309,7 +2311,7 @@ html[data-text-size="l"] .qv-card-label { font-size: 12px; }
         <button class="text-size-btn size-m active" id="text-size-btn-m" onclick="setTextSize('m')" data-size="m" aria-label="Normal text">A</button>
         <button class="text-size-btn size-l" id="text-size-btn-l" onclick="setTextSize('l')" data-size="l" aria-label="Large text">A</button>
       </div>
-      <button onclick="toggleLanguage()" id="lang-btn-hero" class="lang-btn">Español</button>
+      <select onchange="setLanguage(this.value)" id="lang-sel-hero" class="lang-select lang-btn" aria-label="Language"><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="rw">Kinyarwanda</option></select>
     </div>
     <a href="/admin.html" class="admin-link" id="admin-link">Admin</a>
   </div>
@@ -2855,17 +2857,11 @@ function enterApp() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Apply saved language preference if any
+  // Apply saved language preference (any supported language).
   try {
-    if (currentLang === 'es') {
-      const newLabel = 'English';
-      ['lang-btn-login','lang-btn-splash','lang-btn-hero'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = newLabel;
-      });
-      document.documentElement.lang = 'es';
-      applyTranslations();
-    }
+    document.documentElement.lang = currentLang;
+    if (typeof syncLangControls === 'function') syncLangControls();
+    if (currentLang !== 'en') applyTranslations();
   } catch(e) {}
 
   // Sync the text-size button active state with the restored preference
@@ -4894,13 +4890,13 @@ function newFastSituation() {
 const translations = {
   'login-title': { en: '<em>Valign</em>', es: '<em>Valign</em>' },
   'login-subtitle': { en: 'Karabed Leadership Group', es: 'Karabed Leadership Group' },
-  'login-pw-label': { en: 'Access Code', es: 'Código de Acceso' },
-  'btn-login': { en: 'Continue', es: 'Continuar' },
-  'login-footer': { en: 'Need access? Contact Karabed Leadership Group.', es: '¿Necesita acceso? Contacte a Karabed Leadership Group.' },
-  'splash-title': { en: 'A note before we begin', es: 'Una nota antes de comenzar' },
-  'splash-subtitle': { en: 'Valign Preview', es: 'Vista Previa de Valign' },
-  'splash-p1': { en: 'Welcome, and thank you for being part of this journey. Valign is in its early testing phase, and your presence here is a gift to this work.', es: 'Bienvenido, y gracias por ser parte de este camino. Valign está en su fase inicial de prueba, y su presencia aquí es un regalo para este trabajo.' },
-  'splash-p2': { en: 'This is a shared space of trust. Everything generated inside, the guidance, the scripts, the analysis, is confidential and intended solely to support your feedback to Karabed Leadership Group as we shape this tool together.', es: 'Este es un espacio compartido de confianza. Todo lo que se genera aquí, la guía, los guiones, el análisis, es confidencial y tiene como único propósito apoyar su retroalimentación a Karabed Leadership Group mientras damos forma a esta herramienta juntos.' },
+  'login-pw-label': { en: 'Access Code', es: 'Código de Acceso', fr: 'Code d’accès' },
+  'btn-login': { en: 'Continue', es: 'Continuar', fr: 'Continuer' },
+  'login-footer': { en: 'Need access? Contact Karabed Leadership Group.', es: '¿Necesita acceso? Contacte a Karabed Leadership Group.', fr: 'Besoin d’un accès ? Contactez Karabed Leadership Group.' },
+  'splash-title': { en: 'A note before we begin', es: 'Una nota antes de comenzar', fr: 'Un mot avant de commencer' },
+  'splash-subtitle': { en: 'Valign Preview', es: 'Vista Previa de Valign', fr: 'Aperçu de Valign' },
+  'splash-p1': { en: 'Welcome, and thank you for being part of this journey. Valign is in its early testing phase, and your presence here is a gift to this work.', es: 'Bienvenido, y gracias por ser parte de este camino. Valign está en su fase inicial de prueba, y su presencia aquí es un regalo para este trabajo.', fr: 'Bienvenue, et merci de faire partie de ce parcours. Valign en est à sa phase de test initiale, et votre présence ici est un cadeau pour ce travail.' },
+  'splash-p2': { en: 'This is a shared space of trust. Everything generated inside, the guidance, the scripts, the analysis, is confidential and intended solely to support your feedback to Karabed Leadership Group as we shape this tool together.', es: 'Este es un espacio compartido de confianza. Todo lo que se genera aquí, la guía, los guiones, el análisis, es confidencial y tiene como único propósito apoyar su retroalimentación a Karabed Leadership Group mientras damos forma a esta herramienta juntos.', fr: 'C’est un espace de confiance partagé. Tout ce qui y est généré — les conseils, les scripts, l’analyse — est confidentiel et destiné uniquement à soutenir vos retours à Karabed Leadership Group tandis que nous façonnons cet outil ensemble.' },
   'splash-p3': { en: 'We are so grateful for your partnership. What you share here helps us build something that truly serves leaders and the communities they support.', es: 'Estamos profundamente agradecidos por su colaboración. Lo que comparte aquí nos ayuda a construir algo que verdaderamente sirve a los líderes y a las comunidades que apoyan.' },
   'splash-agree-label': { en: "I'm here to explore Valign and offer my feedback to Karabed Leadership Group. I'll keep everything I find here confidential and use this space only for that purpose.", es: 'Estoy aquí para explorar Valign y ofrecer mi retroalimentación a Karabed Leadership Group. Mantendré toda la información aquí de manera confidencial y usaré este espacio solo para ese propósito.' },
   'enter-btn': { en: 'Enter the App', es: 'Entrar a la App' },
@@ -5040,28 +5036,52 @@ const valueTranslations = {
   'Humility': 'Humildad', 'Courage': 'Coraje', 'Trust': 'Confianza', 'Wellness': 'Bienestar'
 };
 
-function toggleLanguage() {
-  currentLang = currentLang === 'en' ? 'es' : 'en';
+// Languages the app can display. English is the always-present fallback:
+// any string not yet translated for the chosen language shows English.
+const LANGS = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'rw', label: 'Kinyarwanda' }
+];
+
+// Pick from an inline { en, es, fr, rw } map, falling back to English.
+function tr(map) {
+  if (map == null) return '';
+  if (typeof map === 'string') return map;
+  return map[currentLang] || map.en || '';
+}
+
+function setLanguage(code) {
+  if (!LANGS.some(l => l.code === code)) code = 'en';
+  currentLang = code;
   try { localStorage.setItem('vl_lang', currentLang); } catch(e) {}
-  const newLabel = currentLang === 'en' ? 'Español' : 'English';
-  ['lang-btn-login','lang-btn-splash','lang-btn-hero'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = newLabel;
-  });
   document.documentElement.lang = currentLang;
+  syncLangControls();
   applyTranslations();
   try { if (typeof updateScenarioHistoryButton === 'function') updateScenarioHistoryButton(); } catch (e) {}
 }
+
+// Keep every language dropdown on the page showing the active language.
+function syncLangControls() {
+  document.querySelectorAll('select.lang-select').forEach(sel => { sel.value = currentLang; });
+}
+
+// Back-compat: any older inline handler that still calls toggleLanguage().
+function toggleLanguage() { setLanguage(currentLang === 'en' ? 'es' : 'en'); }
 
 function applyTranslations() {
   for (const id in translations) {
     const el = document.getElementById(id);
     if (el) {
+      // Fall back to English for any language not yet translated for this key.
+      const val = translations[id][currentLang] || translations[id].en;
+      if (val == null) continue;
       // Use innerHTML if the translation contains any HTML tags
-      if (/<\w+/.test(translations[id][currentLang])) {
-        el.innerHTML = translations[id][currentLang];
+      if (/<\w+/.test(val)) {
+        el.innerHTML = val;
       } else {
-        el.textContent = translations[id][currentLang];
+        el.textContent = val;
       }
     }
   }
@@ -5380,7 +5400,7 @@ function applyTranslations() {
       }
     }
   };
-  function L() { return TXT[(typeof currentLang !== 'undefined' && currentLang === 'es') ? 'es' : 'en']; }
+  function L() { try { return TXT[currentLang] || TXT.en; } catch(e) { return TXT.en; } }
 
   function load() {
     try {
