@@ -14,69 +14,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') return listOrgs(req, res)
   if (req.method === 'POST') return createOrg(req, res)
-  if (req.method === 'DELETE') return deleteOrg(req, res)
   return res.status(405).json({ error: 'Method not allowed' })
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// Permanently remove an org and everything tied to it. Irreversible — the
-// console guards it behind a confirmation. Deletes in FK-safe order (dependents
-// first, org row last), mirroring the onboarding rollback path.
-async function deleteOrg(req, res) {
-  const id = typeof req.body?.id === 'string' ? req.body.id.trim() : ''
-  if (!UUID_RE.test(id)) {
-    return res.status(400).json({ error: 'A valid organization id is required.' })
-  }
-
-  const supa = getServerSupabase()
-
-  const { data: org, error: orgErr } = await supa
-    .from('orgs')
-    .select('id, name, username')
-    .eq('id', id)
-    .maybeSingle()
-  if (orgErr) {
-    console.error('Delete org lookup error:', orgErr)
-    return res.status(500).json({ error: 'Could not look up the organization.' })
-  }
-  if (!org) {
-    return res.status(404).json({ error: 'That organization no longer exists.' })
-  }
-
-  // Login accounts linked to this org — removed so the username/email frees up.
-  const { data: members } = await supa
-    .from('org_members')
-    .select('user_id')
-    .eq('org_id', id)
-  const userIds = [...new Set((members || []).map(m => m.user_id).filter(Boolean))]
-
-  const { error: hbErr } = await supa.from('handbooks').delete().eq('org_id', id)
-  if (hbErr) {
-    console.error('Delete handbook error:', hbErr)
-    return res.status(500).json({ error: 'Could not delete the organization’s handbook.' })
-  }
-
-  const { error: memErr } = await supa.from('org_members').delete().eq('org_id', id)
-  if (memErr) {
-    console.error('Delete membership error:', memErr)
-    return res.status(500).json({ error: 'Could not unlink the organization’s login.' })
-  }
-
-  // Fail-soft: a leftover auth user is harmless (the onboarding path reclaims
-  // orphaned users by email), so don't block the delete on it.
-  for (const uid of userIds) {
-    const { error: userErr } = await supa.auth.admin.deleteUser(uid)
-    if (userErr) console.error('Delete auth user error:', userErr)
-  }
-
-  const { error: delErr } = await supa.from('orgs').delete().eq('id', id)
-  if (delErr) {
-    console.error('Delete org error:', delErr)
-    return res.status(500).json({ error: 'Could not delete the organization.' })
-  }
-
-  return res.status(200).json({ ok: true, deleted: { id: org.id, name: org.name, username: org.username } })
 }
 
 async function listOrgs(req, res) {
