@@ -368,6 +368,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await routeInitialView();
 
+  // Pre-fill the org username when opened via a per-org link from the console
+  // (/admin.html?u=<username>). Cosmetic only — just fills the sign-in field.
+  const uParam = new URLSearchParams(location.search).get('u');
+  if (uParam) {
+    const uEl = document.getElementById('login-username');
+    if (uEl && !uEl.value) uEl.value = uParam.trim().toLowerCase().slice(0, 40);
+  }
+
   // bfcache restore (e.g. Back button from main app): re-route so we don't
   // show a stale state or flash the wrong view.
   window.addEventListener('pageshow', async (ev) => {
