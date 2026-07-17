@@ -525,6 +525,7 @@ function startWizard() {
     primary: '#1B2A4A', accent: '#C9A84C', logo: '',
     values: [blankValue()],
     hbPolicies: '', hbContact: '', hbVersion: '',
+    docs: [],
     // Backup password, generated silently. The client normally replaces it
     // via the set-password link; this surfaces only on the success screen.
     password: genPassword()
@@ -537,7 +538,7 @@ function startWizard() {
 
 function wizardDirty() {
   if (!wiz) return false;
-  return !!(wiz.name || wiz.username || wiz.logo || wiz.hbPolicies || wiz.values.some(v => v.name || v.definition));
+  return !!(wiz.name || wiz.username || wiz.logo || wiz.hbPolicies || wiz.values.some(v => v.name || v.definition) || wiz.docs.some(d => d.title || d.body));
 }
 
 function cancelWizard() {
@@ -681,7 +682,22 @@ as possible; a doctor's note may be required after 3+ days.</pre>
       <div class="w-field">
         <div class="field-label">Version label (optional)</div>
         <input type="text" class="w-input" id="f-hb-version" maxlength="200" placeholder="e.g. 2026 Employee Handbook" value="${escapeAttr(wiz.hbVersion)}" />
-      </div>`;
+      </div>
+
+      <div class="w-field" style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+        <div class="field-label">Additional reference documents (optional)</div>
+        <div class="w-hint" style="margin:2px 0 12px;">Add other documents the app should reference &mdash; e.g. <strong>Mission &amp; Vision</strong>, a <strong>Discipline Policy</strong>, or a <strong>Code of Conduct</strong>. Give each a name and paste its text; each becomes a named section the guidance can cite, exactly like the handbook.</div>
+        <div id="doc-rows"></div>
+        <button class="btn-ghost" id="btn-add-doc" type="button" style="width:100%;">+ Add a document</button>
+      </div>
+      <datalist id="doc-suggestions">
+        <option value="Mission & Vision"></option>
+        <option value="Discipline Policy"></option>
+        <option value="Code of Conduct"></option>
+        <option value="Values in Action"></option>
+        <option value="Health & Safety Policy"></option>
+        <option value="Anti-Harassment Policy"></option>
+      </datalist>`;
     const ta = $('f-hb-policies');
     const updateCounter = () => {
       const t = ta.value;
@@ -692,6 +708,14 @@ as possible; a doctor's note may be required after 3+ days.</pre>
     };
     ta.addEventListener('input', updateCounter);
     updateCounter();
+    renderDocRows();
+    $('btn-add-doc').addEventListener('click', () => {
+      syncDocsFromDom();
+      wiz.docs.push(blankDoc());
+      renderDocRows();
+      const rows = document.querySelectorAll('#doc-rows [data-dk="title"]');
+      if (rows.length) rows[rows.length - 1].focus();
+    });
 
   } else if (wiz.step === 4) {
     const hbText = wiz.hbPolicies.trim();
@@ -699,6 +723,10 @@ as possible; a doctor's note may be required after 3+ days.</pre>
     const hbSummary = hbText
       ? `Included &mdash; ${hbSections} section${hbSections !== 1 ? 's' : ''}, ${hbText.length.toLocaleString()} characters${wiz.hbVersion ? ' (' + escapeHtml(wiz.hbVersion) + ')' : ''}${hbSections === 0 ? ' &mdash; <span style="color:var(--amber);">no === SECTION === headers detected; double-check the format</span>' : ''}`
       : 'None &mdash; values-based guidance only';
+    const docList = wiz.docs.filter(d => d.body.trim());
+    const docSummary = docList.length
+      ? docList.map(d => escapeHtml(d.title.trim() || 'Untitled document')).join(', ')
+      : 'None';
     const valsHtml = wiz.values.map(v => `
       <div class="review-val">
         <div class="review-val-name">${escapeHtml(v.name)}</div>
@@ -713,6 +741,7 @@ as possible; a doctor's note may be required after 3+ days.</pre>
         <div class="review-kv"><b>Colors</b> <span><span class="swatch-dot" style="background:${escapeAttr(wiz.primary)};"></span>${escapeHtml(wiz.primary)} &nbsp; <span class="swatch-dot" style="background:${escapeAttr(wiz.accent)};"></span>${escapeHtml(wiz.accent)}</span></div>
         <div class="review-kv"><b>Logo</b> ${wiz.logo ? escapeHtml(wiz.logo) : 'None'}</div>
         <div class="review-kv"><b>Handbook</b> <span>${hbSummary}</span></div>
+        <div class="review-kv"><b>Documents</b> <span>${docSummary}</span></div>
       </div>
       <div class="review-block">
         <div class="field-label">Values (${wiz.values.length})</div>
@@ -773,6 +802,59 @@ function syncValuesFromDom() {
   });
 }
 
+// ─── Additional reference documents (step 3) ───
+function blankDoc() { return { title: '', body: '' }; }
+
+function renderDocRows() {
+  const wrap = $('doc-rows');
+  if (!wrap) return;
+  wrap.innerHTML = wiz.docs.map((d, i) => `
+    <div class="value-card" data-di="${i}">
+      <div class="value-card-head">
+        <span class="value-card-label">Document ${i + 1}</span>
+        <button class="value-remove" type="button" data-doc-remove="${i}" title="Remove this document">&times;</button>
+      </div>
+      <div class="w-field">
+        <div class="field-label">Document name</div>
+        <input type="text" class="w-input" data-dk="title" list="doc-suggestions" maxlength="80" placeholder="e.g. Mission & Vision" value="${escapeAttr(d.title)}" />
+      </div>
+      <div class="w-field" style="margin-bottom:0;">
+        <div class="field-label">Document text</div>
+        <textarea class="w-textarea" data-dk="body" rows="6" maxlength="60000" placeholder="Paste the document text…">${escapeHtml(d.body)}</textarea>
+      </div>
+    </div>`).join('');
+
+  wrap.querySelectorAll('[data-doc-remove]').forEach(btn => btn.addEventListener('click', () => {
+    syncDocsFromDom();
+    wiz.docs.splice(Number(btn.dataset.docRemove), 1);
+    renderDocRows();
+  }));
+}
+
+function syncDocsFromDom() {
+  document.querySelectorAll('#doc-rows .value-card').forEach(card => {
+    const d = wiz.docs[Number(card.dataset.di)];
+    if (!d) return;
+    card.querySelectorAll('[data-dk]').forEach(el => { d[el.dataset.dk] = el.value; });
+  });
+}
+
+// Combine the handbook text and any extra documents into one policies blob.
+// Each extra document becomes its own === SECTION ===, which is exactly what
+// the AI already scans for — so no backend change is needed.
+function buildPolicies() {
+  const parts = [];
+  const hb = wiz.hbPolicies.trim();
+  if (hb) parts.push(hb);
+  for (const d of wiz.docs) {
+    const body = (d.body || '').trim();
+    if (!body) continue;
+    const title = (d.title || '').trim().toUpperCase() || 'DOCUMENT';
+    parts.push(`=== ${title} ===\n${body}`);
+  }
+  return parts.join('\n\n');
+}
+
 // Reads the current step's inputs into wiz. With validate=true, returns an
 // error message string (or null if the step is good).
 function collectStep(validate) {
@@ -817,13 +899,22 @@ function collectStep(validate) {
     if (p) wiz.hbPolicies = p.value;
     if (c) wiz.hbContact = c.value.trim();
     if (v) wiz.hbVersion = v.value.trim();
+    syncDocsFromDom();
     if (validate) {
-      if (!wiz.hbPolicies.trim() && (wiz.hbContact || wiz.hbVersion)) {
-        return 'Add the handbook policy text too — or clear the HR contact and version fields to skip this step.';
+      const hasContent = wiz.hbPolicies.trim() || wiz.docs.some(d => d.body.trim());
+      if (!hasContent && (wiz.hbContact || wiz.hbVersion)) {
+        return 'Add the handbook text or at least one document — or clear the HR contact and version fields to skip this step.';
       }
-      if (wiz.hbPolicies.length > 60000) {
-        return 'Handbook policy text is too long (max 60,000 characters).';
+      for (const d of wiz.docs) {
+        if (d.body.trim() && !d.title.trim()) {
+          return 'Give every document a name — one has text but no name.';
+        }
       }
+      if (buildPolicies().length > 60000) {
+        return 'The handbook and documents together are too long (max 60,000 characters combined).';
+      }
+      // Drop empty document rows so they don't linger into the review screen.
+      wiz.docs = wiz.docs.filter(d => d.body.trim() || d.title.trim());
     }
   }
   return null;
@@ -860,6 +951,7 @@ async function submitCreate() {
   btn.textContent = 'Creating…';
   setWizErr(null);
   try {
+    const policies = buildPolicies();
     const payload = {
       name: wiz.name,
       username: wiz.username,
@@ -873,8 +965,8 @@ async function submitCreate() {
         if (v.definition_es) out.definition_es = v.definition_es;
         return out;
       }),
-      handbook: wiz.hbPolicies.trim() ? {
-        policies: wiz.hbPolicies.trim(),
+      handbook: policies ? {
+        policies,
         hr_contact: wiz.hbContact,
         version: wiz.hbVersion
       } : null,
