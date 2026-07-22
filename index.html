@@ -3961,8 +3961,20 @@ function switchMode(mode) {
   // We only flip the layout (On-the-Go only vs. full analysis) — we do NOT
   // re-run the analysis or hide the results.
   // Practice mode gets its own results screen, so it always exits this preservation logic.
-  const resultsVisible = document.getElementById('results-view').style.display === 'block';
-  if (resultsVisible && lastResult && mode !== 'practice' && mode !== 'roleplay') {
+  // If guidance has already been generated, preserve it no matter which tab we
+  // came from. This used to require the results panel to still be on screen —
+  // but Practice and Role Play hide it, so tabbing back to Fast/Detailed made
+  // the guidance look wiped. The data was never lost (lastResult still holds
+  // it); we just weren't re-showing the panel. Now we restore it explicitly.
+  if (lastResult && mode !== 'practice' && mode !== 'roleplay') {
+    document.getElementById('fast-mode').style.display = 'none';
+    document.getElementById('step-1').style.display = 'none';
+    document.getElementById('step-2').style.display = 'none';
+    document.getElementById('practice-mode').style.display = 'none';
+    document.getElementById('roleplay-mode').style.display = 'none';
+    document.getElementById('practice-results').style.display = 'none';
+    document.getElementById('loading-view').style.display = 'none';
+    document.getElementById('results-view').style.display = 'block';
     if (mode === 'fast') {
       document.body.classList.add('fast-results');
       document.body.classList.remove('detailed-results');
